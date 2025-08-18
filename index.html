@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>89 anos da Tia Amélia 🎉 | Churrasco Comunitário</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="description" content="Organizador interativo do churrasco comunitário da Tia Amélia (89). Reserve presentes, cadastre o que vai levar e acompanhe o progresso em tempo real." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+  <style>
+    /* Extras sutis */
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,.7); }
+    .card { @apply rounded-2xl shadow-lg p-4 bg-white; }
+    .btn { @apply rounded-xl px-4 py-2 font-medium shadow hover:shadow-md transition; }
+    .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
+    .btn-ghost { @apply bg-white border border-gray-300 hover:bg-gray-50; }
+    .tag { @apply text-xs px-2 py-1 rounded-full bg-gray-100; }
+    .input { @apply w-full rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:border-blue-400; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-blue-50 via-white to-rose-50 text-gray-800">
+  <!-- HEADER -->
+  <header class="sticky top-0 z-30 bg-white/70 backdrop-blur border-b">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div class="text-2xl">🎉</div>
+      <div class="flex-1">
+        <h1 class="text-lg sm:text-xl font-bold">89 anos da Tia Amélia</h1>
+        <p id="eventDateText" class="text-sm text-gray-600">Sábado — data a definir</p>
+      </div>
+      <div id="authArea" class="flex items-center gap-2"></div>
+    </div>
+  </header>
+
+  <!-- HERO / COUNTER -->
+  <section class="max-w-6xl mx-auto px-4 mt-6">
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="md:col-span-2 card">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-bold">Churrasco comunitário</h2>
+            <p class="text-sm text-gray-600">Cada um leva um pouquinho e todo mundo curte juntinho 💙</p>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-gray-500">Contagem regressiva</div>
+            <div id="countdown" class="text-2xl font-bold">--d --h --m</div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="flex items-center justify-between text-sm mb-2">
+            <span class="font-medium">Progresso dos itens confirmados</span>
+            <span id="progressText" class="text-gray-600">0 / 0</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="progressBar" class="bg-blue-600 h-3 rounded-full" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="font-semibold mb-2">Informações rápidas</h3>
+        <ul class="text-sm space-y-2">
+          <li><span class="tag">Local</span> <span id="eventLocation">Casa da família</span></li>
+          <li><span class="tag">Horário</span> <span id="eventTime">12h</span></li>
+          <li><span class="tag">Dress code</span> Alegre & confortável 😄</li>
+          <li><span class="tag">Obs.</span> Leve amor, fome e boas histórias!</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACTIONS -->
+  <section class="max-w-6xl mx-auto px-4 mt-6">
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="md:col-span-2 card">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-bold">Quem leva o quê</h2>
+          <div class="text-xs text-gray-500">Atualiza em tempo real</div>
+        </div>
+        
+        <!-- Add item form -->
+        <div id="addItemCard" class="mt-3 hidden">
+          <form id="addItemForm" class="grid sm:grid-cols-5 gap-2">
+            <input id="itemName" class="input sm:col-span-2" placeholder="Ex.: Picanha" required />
+            <input id="itemQty" class="input" placeholder="Qtd (ex.: 3)" type="number" min="0" step="0.1" />
+            <input id="itemUnit" class="input" placeholder="Unid (kg, un, L)" />
+            <input id="itemNotes" class="input sm:col-span-5" placeholder="Observações (opcional)" />
+            <button class="btn btn-primary sm:col-span-1" type="submit">Adicionar</button>
+          </form>
+        </div>
+
+        <!-- Items list -->
+        <div id="itemsList" class="mt-4 grid md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="text-lg font-bold">Presentes da Tia Amélia</h2>
+        <p class="text-sm text-gray-600 mb-3">Clique em “vou levar” para reservar e evitar duplicidade.</p>
+        <div id="giftsList" class="space-y-2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="max-w-6xl mx-auto px-4 py-10 text-center text-xs text-gray-500">
+    Feito com 💙 por Caio — hospedado no GitHub Pages
+  </footer>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // ======= CONFIGURAÇÕES DO EVENTO =======
+    const EVENT = {
+      id: 'tia-amelia-89',
+      dateISO: '2025-08-23T18:00:00-03:00', // Ajuste a data/hora real aqui
+      location: 'A confirmar', // ex.: Rua X, 123 – Barueri/SP
+      timeText: '18h',
+      familyPIN: 'AMELIA89', // PIN simples só para família (não é senha forte)
+      adminPIN: 'HOST2025' // PIN de anfitrião para administração
+    };
+
+    // ======= FIREBASE (cole sua config abaixo) =======
+    const firebaseConfig = {
+      apiKey: "COLE_AQUI",
+      authDomain: "COLE_AQUI.firebaseapp.com",
+      projectId: "COLE_AQUI",
+      storageBucket: "COLE_AQUI.appspot.com",
+      messagingSenderId: "COLE_AQUI",
+      appId: "COLE_AQUI"
+    };
+
+    // ======= IMPORTS SDK MODULAR =======
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+    // ======= APP SETUP =======
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ======= DOM HOOKS =======
+    const authArea = document.getElementById('authArea');
+    const addItemCard = document.getElementById('addItemCard');
+    const itemsList = document.getElementById('itemsList');
+    const giftsList = document.getElementById('giftsList');
+    const eventDateText = document.getElementById('eventDateText');
+    const eventLocation = document.getElementById('eventLocation');
+    const eventTime = document.getElementById('eventTime');
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBar');
+
+    // ======= STATE =======
+    let currentUser = null; // auth user
+    let profileName = localStorage.getItem('profileName') || '';
+    let pinOK = localStorage.getItem('pinOK') === 'true';
+    let isAdmin = localStorage.getItem('isAdmin') === 'true';
+
+    // Apply event info
+    eventDateText.textContent = new Date(EVENT.dateISO).toLocaleString('pt-BR', { weekday:'long', day:'2-digit', month:'long', hour:'2-digit', minute:'2-digit' });
+    eventLocation.textContent = EVENT.location;
+    eventTime.textContent = EVENT.timeText;
+
+    // Countdown
+    function tickCountdown(){
+      const now = new Date();
+      const target = new Date(EVENT.dateISO);
+      const diff = Math.max(0, target - now);
+      const d = Math.floor(diff / (1000*60*60*24));
+      const h = Math.floor((diff / (1000*60*60)) % 24);
+      const m = Math.floor((diff / (1000*60)) % 60);
+      document.getElementById('countdown').textContent = `${d}d ${h}h ${m}m`;
+    }
+    setInterval(tickCountdown, 1000*20); tickCountdown();
+
+    // ===== AUTH LITE (Anonymous + PIN familiar + nome) =====
+    function renderAuth(){
+      authArea.innerHTML = '';
+      if(currentUser && pinOK && profileName){
+        const wrap = document.createElement('div');
+        wrap.className = 'flex items-center gap-2';
+        wrap.innerHTML = `<span class="text-sm">Olá, <strong>${escapeHtml(profileName)}</strong>${isAdmin? ' <span class=\"tag bg-green-100 text-green-700\">Anfitrião</span>':''}</span>
+          <button id="adminBtn" class="btn btn-ghost text-xs">${isAdmin? 'Sair do modo anfitrião':'Entrar como anfitrião'}</button>
+          <button id="logoutBtn" class="btn btn-ghost text-xs">Sair</button>`;
+        authArea.appendChild(wrap);
+        document.getElementById('adminBtn').onclick = async ()=>{
+          if(isAdmin){
+            isAdmin = false; localStorage.removeItem('isAdmin'); renderAuth();
+          } else {
+            const pin = prompt('PIN do anfitrião:');
+            if(pin === EVENT.adminPIN){ isAdmin = true; localStorage.setItem('isAdmin','true'); renderAuth(); }
+            else alert('PIN de anfitrião incorreto');
+          }
+        };
+        document.getElementById('logoutBtn').onclick = async ()=>{
+          await signOut(auth);
+          localStorage.removeItem('profileName');
+          localStorage.removeItem('pinOK');
+          localStorage.removeItem('isAdmin');
+          profileName = ''; pinOK = false; isAdmin = false;
+        };
+        addItemCard.classList.remove('hidden');
+      } else {
+        const wrap = document.createElement('div');
+        wrap.className = 'flex items-center gap-2';
+        wrap.innerHTML = `
+          <input id="nameInput" class="input w-40" placeholder="Seu nome" value="${escapeHtml(profileName)}"/>
+          <input id="pinInput" class="input w-32" placeholder="PIN" />
+          <button id="enterBtn" class="btn btn-primary text-sm">Entrar</button>
+        `;
+        authArea.appendChild(wrap);
+        document.getElementById('enterBtn').onclick = async ()=>{
+          const n = document.getElementById('nameInput').value.trim();
+          const p = (document.getElementById('pinInput').value || '').trim();
+          if(!n){ alert('Digite seu nome'); return; }
+          if(p !== EVENT.familyPIN){ alert('PIN incorreto'); return; }
+          try{
+            await signInAnonymously(auth);
+            profileName = n; pinOK = true;
+            localStorage.setItem('profileName', profileName);
+            localStorage.setItem('pinOK', 'true');
+          }catch(e){
+            console.error(e); alert('Erro ao entrar');
+          }
+        };
+        addItemCard.classList.add('hidden');
+      }
+    }
+
+    onAuthStateChanged(auth, (u)=>{ currentUser = u; renderAuth(); });
+
+    // ===== FIRESTORE PATHS =====
+    const itemsCol = collection(db, 'events', EVENT.id, 'bringItems');
+    const giftsCol = collection(db, 'events', EVENT.id, 'gifts');
+
+    // ===== UI HELPERS =====
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+
+    function itemCard(docId, d){
+      const owner = d.ownerName || 'Família';
+      const qty = d.qty ? `${d.qty} ${d.unit||''}`.trim() : '';
+      const notes = d.notes ? `<div class='text-xs text-gray-500 mt-1'>${escapeHtml(d.notes)}</div>` : '';
+      const isMine = currentUser && d.ownerUid === currentUser.uid;
+      const canRemove = isMine || isAdmin;
+      return `
+        <div class="rounded-2xl border p-4 bg-white/80">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-semibold text-blue-700">${escapeHtml(owner[0]||'?')}</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-gray-500">${escapeHtml(owner)}</div>
+                  <div class="text-lg font-semibold">${escapeHtml(d.name)}</div>
+                </div>
+                <div class="text-right">
+                  ${qty ? `<div class=\"tag\">${escapeHtml(qty)}</div>`:''}
+                </div>
+              </div>
+              ${notes}
+              <div class="flex gap-2 mt-3">
+                ${canRemove ? `<button data-del='${docId}' class="btn btn-ghost text-xs">Remover</button>`:''}
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function giftRow(docId, g){
+      const reserved = !!g.reservedByName;
+      const who = reserved ? `por <strong>${escapeHtml(g.reservedByName)}</strong>` : 'disponível';
+      const btnReserve = reserved ? '' : `<button data-reserve='${docId}' class="btn btn-primary btn-sm text-xs">Vou levar</button>`;
+      const btnFree = (reserved && isAdmin) ? `<button data-free='${docId}' class=\"btn btn-ghost text-xs\">Liberar</button>` : '';
+      return `
+        <div class="flex items-center justify-between rounded-xl border p-3 bg-white/80">
+          <div>
+            <div class="font-medium">${escapeHtml(g.title)}</div>
+            <div class="text-xs text-gray-500">${g.qty?`Qtd: ${escapeHtml(String(g.qty))}`:''} <span class="ml-2 ${reserved?'text-green-700':'text-gray-500'}">${who}</span></div>
+          </div>
+          <div class="flex items-center gap-2">
+            ${btnReserve}
+            ${btnFree}
+          </div>
+        </div>`;
+    }
+
+    // ===== RENDER STREAMS =====
+    let totalNeeded = 0; // gifts + base goals
+    let totalDone = 0;   // reserved gifts + items
+
+    function updateProgress(){
+      const pct = totalNeeded ? Math.min(100, Math.round((totalDone/totalNeeded)*100)) : 0;
+      progressText.textContent = `${totalDone} / ${totalNeeded}`;
+      progressBar.style.width = pct + '%';
+    }
+
+    // Items live
+    const itemsQ = query(itemsCol, orderBy('createdAt','desc'));
+    onSnapshot(itemsQ, (snap)=>{
+      itemsList.innerHTML = '';
+      let countItems = 0;
+      snap.forEach(docSnap=>{
+        const d = docSnap.data();
+        if(d.deleted) return; // ignora removidos
+        countItems++;
+        itemsList.insertAdjacentHTML('beforeend', itemCard(docSnap.id, d));
+      });
+      totalDoneItems = countItems;
+      recomputeProgress();
+      itemsList.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-del');
+          if(!confirm('Remover este item?')) return;
+          await setDoc(doc(db,'events',EVENT.id,'bringItems',id), { deleted: true }, { merge: true });
+        });
+      });
+    });
+      // progress counts: items add 1 each
+      // gifts progress handled on gifts snapshot
+      // For simplicity: totalDone includes item count
+      totalDoneItems = countItems;
+      recomputeProgress();
+      // bind remove
+      itemsList.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-del');
+          if(!confirm('Remover este item?')) return;
+          await setDoc(doc(db,'events',EVENT.id,'bringItems',id), { deleted: true }, { merge: true });
+        });
+      });
+    });
+
+    let totalDoneItems = 0;
+    let totalGifts = 0;
+    let totalReservedGifts = 0;
+
+    function recomputeProgress(){
+      totalNeeded = totalGifts + 10; // 10 como meta base simbólica para itens do churrasco
+      totalDone = totalReservedGifts + totalDoneItems;
+      updateProgress();
+    }
+
+    // Gifts live
+    onSnapshot(giftsCol, (snap)=>{
+      giftsList.innerHTML = '';
+      totalGifts = 0; totalReservedGifts = 0;
+      snap.forEach(docSnap=>{
+        const g = docSnap.data();
+        // ignore soft-deleted
+        if(g.deleted) return;
+        totalGifts++;
+        if(g.reservedByName) totalReservedGifts++;
+        giftsList.insertAdjacentHTML('beforeend', giftRow(docSnap.id, g));
+      });
+      recomputeProgress();
+      // bind reserve
+      giftsList.querySelectorAll('[data-reserve]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!(currentUser && pinOK && profileName)) { alert('Entre com seu nome e PIN.'); return; }
+          const id = btn.getAttribute('data-reserve');
+          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{
+            reservedByName: profileName,
+            reservedByUid: currentUser.uid,
+            reservedAt: serverTimestamp()
+          });
+        });
+      });
+      giftsList.querySelectorAll('[data-free]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!isAdmin){ alert('Apenas anfitrião.'); return; }
+          const id = btn.getAttribute('data-free');
+          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{
+            reservedByName: null,
+            reservedByUid: null,
+            reservedAt: null
+          });
+        });
+      }); return; }
+          const id = btn.getAttribute('data-reserve');
+          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{
+            reservedByName: profileName,
+            reservedByUid: currentUser.uid,
+            reservedAt: serverTimestamp()
+          });
+        });
+      });
+    });
+
+    // Add item submit
+    document.getElementById('addItemForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      if(!(currentUser && pinOK && profileName)) { alert('Entre com seu nome e PIN.'); return; }
+      const name = document.getElementById('itemName').value.trim();
+      const qty = parseFloat(document.getElementById('itemQty').value || '');
+      const unit = document.getElementById('itemUnit').value.trim();
+      const notes = document.getElementById('itemNotes').value.trim();
+      if(!name){ alert('Digite o item'); return; }
+      await addDoc(itemsCol, {
+        name, qty: isNaN(qty)? null: qty, unit, notes,
+        ownerName: profileName, ownerUid: currentUser.uid,
+        createdAt: serverTimestamp(), deleted: false
+      });
+      e.target.reset();
+    });
+
+    // ===== Seed inicial de presentes =====
+    async function seedGiftsIfEmpty(){
+      const snap = await getDocs(giftsCol);
+      if(snap.empty){
+        const gifts = [
+          { title: 'Toalha de mesa pequena (quadrada)', qty: 1 },
+          { title: 'Copos para café', qty: 6 },
+          { title: 'Chaleira', qty: 1 },
+          { title: 'Panela de teflon', qty: 1 },
+          { title: 'Lençol viúvo', qty: 1 },
+          { title: 'Meia dúzia de garfos', qty: 6 },
+          { title: 'Meia dúzia de colheres', qty: 6 },
+          { title: 'Meia dúzia de facas', qty: 6 },
+          { title: 'Panos de prato', qty: 3 },
+          { title: '6 pratos fundos', qty: 6 },
+          { title: '6 pratos rasos', qty: 6 },
+        ];
+        await Promise.all(gifts.map((g,i)=> setDoc(doc(giftsCol, String(i+1)), { ...g })));
+      }
+    }
+    seedGiftsIfEmpty();
+
+  </script>
+
+  <!-- Regras Firestore sugeridas (cole no console do Firebase > Firestore > Regras)
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      function isAuthed(){ return request.auth != null; }
+      match /events/{eventId} {
+        allow read: if true; // site público de família
+        match /{col=**}/{docId} {
+          allow read: if true;
+          allow create: if isAuthed();
+          allow update: if isAuthed();
+        }
+      }
+    }
+  }
+  -->
+</body>
+</html>
