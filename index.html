@@ -8,23 +8,41 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root{--fg:#111827;--fg-2:#374151;--muted:#6b7280}
+    :root{
+      --fg:#111827;--fg-2:#374151;--muted:#6b7280;--brand:#2563eb;--card:#ffffff;--border:#e5e7eb;
+    }
     body{color:var(--fg)}
-    .card{border:1px solid #e5e7eb;border-radius:1rem;background:#fff}
+    .card{border:1px solid var(--border);border-radius:1rem;background:var(--card)}
     .btn{border-radius:.75rem;padding:.625rem .9rem;font-weight:700;min-height:44px}
-    .btn-primary{background:#2563eb;color:#fff}
-    .btn-ghost{background:#fff;border:1px solid #e5e7eb}
+    .btn-primary{background:var(--brand);color:#fff}
+    .btn-ghost{background:#fff;border:1px solid var(--border)}
     .btn-pill{border-radius:9999px}
-    .input{width:100%;border:1px solid #e5e7eb;border-radius:.75rem;padding:.6rem .8rem}
-    .chip{border:1px solid #e5e7eb;border-radius:9999px;padding:.35rem .7rem;font-size:.85rem}
-    .chip[aria-pressed="true"]{background:#eff6ff;border-color:#2563eb;color:#2563eb}
-    .tab{padding:.5rem .9rem;border-radius:.75rem;border:1px solid #e5e7eb}
+    .input{width:100%;border:1px solid var(--border);border-radius:.75rem;padding:.6rem .8rem}
+    .chip{border:1px solid var(--border);border-radius:9999px;padding:.35rem .7rem;font-size:.85rem}
+    .chip[aria-pressed="true"]{background:#eff6ff;border-color:var(--brand);color:var(--brand)}
+    .tab{padding:.5rem .9rem;border-radius:.75rem;border:1px solid var(--border)}
     .tab[aria-selected="true"]{background:#111827;color:#fff;border-color:#111827}
 
-    /* --- Rolagens capadas + iOS smooth --- */
+    /* Modo Vovó: fontes maiores, botões altos, esconde avançados */
+    .grandma html, .grandma body{font-size:115%}
+    .grandma .btn{min-height:52px}
+    .grandma .hide-in-grandma{display:none !important}
+    .grandma #toggleItemsHeight, .grandma #toggleItemsHeightTop,
+    .grandma #toggleGiftsHeight, .grandma #toggleGiftsHeightTop{display:none !important}
+
+    /* Alto contraste */
+    .high-contrast{
+      --fg:#000;--fg-2:#000;--muted:#111;--card:#fff;--border:#000;--brand:#000;
+    }
+    .high-contrast .btn-primary{background:#000;color:#fff}
+
+    /* Reduzir movimento: desliga animações visuais que não são essenciais */
+    .reduce-motion *{animation:none !important; transition:none !important}
+
+    /* Rolagens capadas + iOS smooth */
     #giftsList, #itemsList { scroll-behavior:smooth; -webkit-overflow-scrolling:touch; }
 
-    /* Fade suave no rodapé (usado em itens e presentes) */
+    /* Fade de rodapé (listas com rolagem) */
     .fade-bottom {
       position: absolute; left: 1rem; right: 1rem; bottom: 1rem;
       height: 36px; pointer-events: none; display: none;
@@ -48,8 +66,11 @@
     /* CTA flutuante (mobile) */
     #floatingJoinBtn{ box-shadow:0 10px 20px rgba(37,99,235,.25); }
 
-    /* Área de toast (undo) */
+    /* Toast */
     #toast{position:fixed;left:0;right:0;bottom:12px;display:none;z-index:60}
+
+    /* Destaque da Leitura Guiada */
+    .guided{outline:3px solid #f59e0b; outline-offset:3px; border-radius:.75rem}
   </style>
 </head>
 <body class="min-h-screen" style="background:linear-gradient(to bottom,#f0f6ff,#ffffff,#fff5f5)">
@@ -69,6 +90,19 @@
       <!-- Barras de autenticação -->
       <div id="authBarDesktop" class="hidden sm:flex items-center gap-2"></div>
       <div id="authBarMobile"  class="flex sm:hidden items-center justify-end gap-2"></div>
+    </div>
+
+    <!-- Toggles de Acessibilidade / Ajuda -->
+    <div class="bg-white/80 border-t">
+      <div class="max-w-6xl mx-auto px-4 py-2 flex flex-wrap gap-2 items-center">
+        <button id="toggleGrandma" class="btn btn-ghost text-xs">🔎 Letras grandes / Modo vovó</button>
+        <button id="toggleContrast" class="btn btn-ghost text-xs">⬛ Alto contraste</button>
+        <button id="toggleMotion" class="btn btn-ghost text-xs">🌀 Reduzir animações</button>
+        <button id="btnGuidedRead" class="btn btn-ghost text-xs">🔊 Ler esta tela</button>
+        <div class="ml-auto flex gap-2">
+          <button id="btnHelpTop" class="btn btn-primary btn-pill text-xs">❓ Preciso de ajuda</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -109,6 +143,43 @@
     </div>
   </div>
 
+  <!-- MODAL AJUDA (telefone/whatsapp) -->
+  <div id="helpModal" class="hidden fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative z-10 max-w-sm mx-auto mt-24 p-4 card">
+      <h3 class="font-semibold mb-2">Precisa de ajuda?</h3>
+      <p class="text-sm text-gray-700 mb-3">Fale com o anfitrião pelo WhatsApp ou ligação:</p>
+      <div class="grid gap-2">
+        <a id="helpWhats" class="btn btn-primary text-center" href="#" target="_blank">Abrir WhatsApp</a>
+        <a id="helpTel" class="btn btn-ghost text-center" href="#">Ligar</a>
+      </div>
+      <div class="text-right mt-3">
+        <button id="closeHelp" class="btn btn-ghost">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL QR CODES -->
+  <div id="qrModal" class="hidden fixed inset-0 z-40">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative z-10 max-w-md mx-auto mt-20 p-4 card text-center">
+      <h3 class="font-semibold mb-2">QR Codes</h3>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <div class="text-sm mb-1">Site do evento</div>
+          <img id="qrSite" class="mx-auto" alt="QR do site">
+        </div>
+        <div>
+          <div class="text-sm mb-1">Como chegar (Maps)</div>
+          <img id="qrMaps" class="mx-auto" alt="QR do Maps">
+        </div>
+      </div>
+      <div class="text-right mt-3">
+        <button id="closeQR" class="btn btn-primary">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST (undo) -->
   <div id="toast" class="px-4">
     <div class="max-w-6xl mx-auto">
@@ -122,10 +193,30 @@
     </div>
   </div>
 
+  <!-- COMO FUNCIONA -->
+  <section class="max-w-6xl mx-auto px-4 mt-4">
+    <div class="card p-4">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h3 class="font-semibold mb-1">Como funciona</h3>
+          <ol class="list-decimal ml-5 text-sm text-gray-700 space-y-1">
+            <li>Toque em <strong>Participar</strong>.</li>
+            <li>Digite seu <strong>nome</strong> e o <strong>PIN</strong> da família.</li>
+            <li>Escolha um <strong>presente</strong> ou toque em <strong>Adicionar item</strong>.</li>
+          </ol>
+        </div>
+        <div class="flex flex-col gap-2">
+          <button id="btnRepeatVoice" class="btn btn-ghost text-sm">🔊 Repetir</button>
+          <button id="btnShowQR" class="btn btn-ghost text-sm">📱 Mostrar QR</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- HERO -->
-  <section class="max-w-6xl mx-auto px-4 mt-6">
+  <section class="max-w-6xl mx-auto px-4 mt-4">
     <div class="grid md:grid-cols-3 gap-4">
-      <div class="md:col-span-2 card p-4">
+      <div class="md:col-span-2 card p-4" id="heroCard">
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-xl font-bold">Churrasco comunitário</h2>
@@ -144,6 +235,9 @@
           <div class="w-full bg-gray-200 rounded-full h-3">
             <div id="progressBar" class="bg-blue-600 h-3 rounded-full" style="width:0%"></div>
           </div>
+        </div>
+        <div class="mt-3">
+          <button id="btnArrived" class="btn btn-ghost text-sm">🎈 Cheguei!</button>
         </div>
       </div>
 
@@ -178,8 +272,8 @@
         <span id="itemsCountBadge" class="text-xs text-gray-700"></span>
       </div>
 
-      <!-- Controles (busca/filtro/ordem + ver tudo top) -->
-      <div class="grid gap-2 mb-3">
+      <!-- Controles avançados (ocultos no modo vovó) -->
+      <div id="advancedItemsControls" class="grid gap-2 mb-3 hide-in-grandma">
         <input id="searchItems" class="input" placeholder="Buscar item ou nome de quem leva..." />
         <div class="flex flex-wrap gap-2">
           <button class="chip" data-filter="Todos" aria-pressed="true">Todos</button>
@@ -206,7 +300,11 @@
       <!-- Form -->
       <div id="addItemCard" class="hidden">
         <form id="addItemForm" class="grid sm:grid-cols-6 gap-2">
-          <input id="itemName" class="input sm:col-span-2" placeholder="Ex.: Picanha" required />
+          <div class="sm:col-span-2 relative">
+            <input id="itemName" class="input" placeholder="Ex.: Picanha" autocomplete="off" required />
+            <!-- Sugestões -->
+            <div id="itemSuggest" class="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow hidden"></div>
+          </div>
           <input id="itemQty" class="input" placeholder="Qtd (ex.: 3)" type="number" min="0" step="0.1" />
           <div class="sm:col-span-1">
             <input id="itemUnit" class="input" placeholder="Unid" />
@@ -243,6 +341,7 @@
       <!-- Export -->
       <div class="mt-3 flex flex-wrap gap-2">
         <button id="btnExportItems" class="btn btn-ghost text-sm">Baixar itens (CSV)</button>
+        <button id="btnPrintPDF" class="btn btn-ghost text-sm">Exportar PDF</button>
         <button id="btnTVMode" class="btn btn-ghost text-sm">Modo TV</button>
       </div>
     </div>
@@ -277,6 +376,23 @@
     </div>
   </section>
 
+  <!-- MEUS COMBINADOS -->
+  <section class="max-w-6xl mx-auto px-4 mt-6">
+    <div id="myStuff" class="card p-4 hidden">
+      <h3 class="font-semibold mb-2">Meus combinados</h3>
+      <div class="grid md:grid-cols-2 gap-3">
+        <div>
+          <div class="text-sm text-gray-700 mb-2">Itens que vou levar</div>
+          <div id="myItems" class="grid gap-2"></div>
+        </div>
+        <div>
+          <div class="text-sm text-gray-700 mb-2">Presentes reservados</div>
+          <div id="myGifts" class="grid gap-2"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- PAINEL DO ANFITRIÃO -->
   <section id="adminPanel" class="max-w-6xl mx-auto px-4 mt-6 hidden">
     <div class="grid lg:grid-cols-3 gap-4">
@@ -293,16 +409,22 @@
             <option value="2" selected>2 colunas</option>
             <option value="3">3 colunas</option>
           </select>
+          <label class="text-sm">Travar edições (horas antes)</label>
+          <input id="cfgLockHrs" type="number" min="0" value="0" class="input w-32" />
           <button id="saveCfg" class="btn btn-primary mt-2">Salvar</button>
         </div>
       </div>
 
       <div class="card p-4">
-        <h3 class="font-semibold mb-2">Segurança</h3>
-        <p class="text-sm text-gray-700">
-          Esta versão não lê/salva PIN no Firestore (evita exposição pública).
-          Para trocar os PINs, edite o arquivo <code>index.html</code> (constantes <code>EVENT.familyPIN</code> e <code>EVENT.adminPIN</code>).
-        </p>
+        <h3 class="font-semibold mb-2">Notas fixadas</h3>
+        <div class="grid gap-2">
+          <label class="text-sm">Mensagem</label>
+          <input id="pinNoteText" class="input" placeholder="Recado rápido p/ todos" />
+          <label class="text-sm">Validade (opcional — ISO ou vazio)</label>
+          <input id="pinNoteUntil" class="input" placeholder="2025-08-23T23:59:00-03:00" />
+          <button id="savePinnedNote" class="btn btn-primary mt-2">Fixar / Atualizar</button>
+          <button id="clearPinnedNote" class="btn btn-ghost">Remover nota</button>
+        </div>
       </div>
 
       <div class="card p-4">
@@ -318,14 +440,27 @@
     </div>
   </section>
 
+  <!-- NOTA FIXADA (exibe se houver) -->
+  <section id="pinnedNoteWrap" class="max-w-6xl mx-auto px-4 mt-6 hidden">
+    <div class="card p-4 bg-yellow-50">
+      <div class="flex items-start justify-between gap-3">
+        <div class="text-sm" id="pinnedNoteText"></div>
+        <button id="closePinnedNote" class="btn btn-ghost text-xs hide-in-grandma">Fechar</button>
+      </div>
+    </div>
+  </section>
+
   <footer class="max-w-6xl mx-auto px-4 py-10 text-center text-xs text-gray-600">
     <p class="mb-2">Aviso: é um site de família; o PIN não é segurança forte. Não compartilhe fora do grupo.</p>
+    <div class="flex items-center justify-center gap-2 mb-2">
+      <button id="btnHelpBottom" class="btn btn-primary btn-pill text-xs">❓ Preciso de ajuda</button>
+    </div>
     Feito com 💙 por Caio — hospedado no GitHub Pages
   </footer>
 
   <!-- APP -->
   <script type="module">
-    // ===== Config do Evento (LOCAL — não lê/salva PIN no Firestore) =====
+    // ===== Config do Evento (LOCAL — PIN não é lido/salvo no Firestore) =====
     const EVENT = {
       id: 'tia-amelia-89',
       dateISO: '2025-08-23T18:00:00-03:00',
@@ -334,10 +469,16 @@
       timeText: '18h',
       familyPIN: 'AMELIA89',   // troque aqui se precisar
       adminPIN: 'HOST2025',    // troque aqui se precisar
-      giftsCols: 2
+      giftsCols: 2,
+      lockHoursBefore: 0,      // 0 = nunca trava; admin ignora trava
+      pinnedNote: { text:'', untilISO:'' }
     };
 
-    // ===== Firebase (Firestore + Auth anônimo) =====
+    // Contatos (ajuda)
+    const ADMIN_PHONE = '+5511999999999'; // <- troque para o número real
+    const ADMIN_WHATSAPP = '+5511999999999'; // <- troque para o WhatsApp real
+
+    // ===== Firebase =====
     const firebaseConfig = {
       apiKey: "AIzaSyBduTvLuvV1lrCn7_w12PF0KZ7S6sLMUnQ",
       authDomain: "niver-tia-amelia.firebaseapp.com",
@@ -350,11 +491,15 @@
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import {
+      getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs,
+      onSnapshot, serverTimestamp, query, orderBy, updateDoc, enableIndexedDbPersistence
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    enableIndexedDbPersistence(db).catch(()=>{ /* offline cache best-effort */ });
 
     // ===== DOM =====
     const authBarDesktop = document.getElementById('authBarDesktop');
@@ -370,10 +515,24 @@
     const openPinHelp     = document.getElementById('openPinHelp');
     const closePinHelp    = document.getElementById('closePinHelp');
 
+    const helpModal = document.getElementById('helpModal');
+    const helpWhats = document.getElementById('helpWhats');
+    const helpTel = document.getElementById('helpTel');
+    const closeHelp = document.getElementById('closeHelp');
+
+    const qrModal = document.getElementById('qrModal');
+    const qrSite = document.getElementById('qrSite');
+    const qrMaps = document.getElementById('qrMaps');
+    const closeQR = document.getElementById('closeQR');
+
     const eventDateText = document.getElementById('eventDateText');
     const eventLocation = document.getElementById('eventLocation');
     const eventTime = document.getElementById('eventTime');
     const eventNotes = document.getElementById('eventNotes');
+
+    const btnArrived = document.getElementById('btnArrived');
+    const btnRepeatVoice = document.getElementById('btnRepeatVoice');
+    const btnShowQR = document.getElementById('btnShowQR');
 
     const progressText = document.getElementById('progressText');
     const progressBar = document.getElementById('progressBar');
@@ -392,6 +551,8 @@
     const searchItems = document.getElementById('searchItems');
     const itemsSort = document.getElementById('itemsSort');
 
+    const itemSuggest = document.getElementById('itemSuggest');
+
     const giftsCard        = document.getElementById('giftsCard');
     const giftsList        = document.getElementById('giftsList');
     const toggleGiftsBtn   = document.getElementById('toggleGiftsHeight');
@@ -404,7 +565,17 @@
     const cfgLocation = document.getElementById('cfgLocation');
     const cfgNotes    = document.getElementById('cfgNotes');
     const cfgCols     = document.getElementById('cfgCols');
+    const cfgLockHrs  = document.getElementById('cfgLockHrs');
     const saveCfg     = document.getElementById('saveCfg');
+
+    const pinNoteText = document.getElementById('pinNoteText');
+    const pinNoteUntil= document.getElementById('pinNoteUntil');
+    const savePinnedNote = document.getElementById('savePinnedNote');
+    const clearPinnedNote = document.getElementById('clearPinnedNote');
+
+    const pinnedNoteWrap = document.getElementById('pinnedNoteWrap');
+    const pinnedNoteText = document.getElementById('pinnedNoteText');
+    const closePinnedNote = document.getElementById('closePinnedNote');
 
     const giftTitle   = document.getElementById('giftTitle');
     const giftQty     = document.getElementById('giftQty');
@@ -418,7 +589,20 @@
 
     const btnExportItems = document.getElementById('btnExportItems');
     const btnExportGifts = document.getElementById('btnExportGifts');
+    const btnPrintPDF    = document.getElementById('btnPrintPDF');
     const btnTVMode      = document.getElementById('btnTVMode');
+
+    const btnHelpTop = document.getElementById('btnHelpTop');
+    const btnHelpBottom = document.getElementById('btnHelpBottom');
+
+    const toggleGrandma = document.getElementById('toggleGrandma');
+    const toggleContrast = document.getElementById('toggleContrast');
+    const toggleMotion = document.getElementById('toggleMotion');
+    const btnGuidedRead = document.getElementById('btnGuidedRead');
+
+    const myStuff = document.getElementById('myStuff');
+    const myItems = document.getElementById('myItems');
+    const myGifts = document.getElementById('myGifts');
 
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMsg');
@@ -431,25 +615,21 @@
     let pinOK   = localStorage.getItem('pinOK') === 'true';
     let isAdmin = localStorage.getItem('isAdmin') === 'true';
 
-    // estados de expansão
     let itemsExpanded = false;
     let giftsExpanded = false;
-
-    // filtros/abas
     let filterCategory = 'Todos';
     let giftsTab = 'available'; // 'available' | 'reserved'
-
-    // loading flags (skeletons)
     let loadingItems = true;
     let loadingGifts = true;
 
-    // caches
     let cacheItems = [];
     let cacheGifts = [];
 
-    // undo (gifts)
     let undoTimer = null;
     let undoGiftDoc = null;
+
+    let ttsEnabled = false; // leitura em voz alta (modo vovó liga)
+    const SPEAK_RATE = 1.0;
 
     // Paths
     const eventDocRef = doc(db,'events',EVENT.id);
@@ -457,8 +637,18 @@
     const giftsCol = collection(db,'events',EVENT.id,'gifts');
 
     // ===== Helpers =====
-    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;","<": "&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+    function escapeHtml(s){ return (s||'').replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
     const norm = s => (s||'').trim().toUpperCase();
+
+    function speak(text){
+      try{
+        if(!ttsEnabled) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = SPEAK_RATE;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }catch(e){}
+    }
 
     function setGiftCols(n){
       giftsList.style.gridTemplateColumns = `repeat(${n}, minmax(0,1fr))`;
@@ -488,7 +678,7 @@
       const mapsQ = encodeURIComponent(EVENT.location);
       btnMaps.href = `https://www.google.com/maps?q=${mapsQ}`;
       btnAddGoogle.onclick = () => {
-        const dates = toGoogleDates(EVENT.dateISO, 3); // 3h de duração padrão
+        const dates = toGoogleDates(EVENT.dateISO, 3);
         const text = encodeURIComponent('89 anos da Tia Amélia 🎉');
         const details = encodeURIComponent('Churrasco comunitário — leve amor, fome e boas histórias!');
         const location = encodeURIComponent(EVENT.location);
@@ -513,7 +703,6 @@
     }
     updateEventHeader();
 
-    // Google Calendar dates (UTC basic)
     function toGoogleDates(startISO, hours=3){
       const start = new Date(startISO);
       const end = new Date(start.getTime() + hours*60*60*1000);
@@ -552,6 +741,55 @@ END:VCALENDAR`;
       setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
     }
 
+    // ===== Acessibilidade / Ajuda / QR =====
+    restoreToggles();
+    document.getElementById('btnShowQR').onclick = ()=>{
+      const site = encodeURIComponent(window.location.href);
+      const maps = encodeURIComponent(`https://www.google.com/maps?q=${encodeURIComponent(EVENT.location)}`);
+      qrSite.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${site}`;
+      qrMaps.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${maps}`;
+      qrModal.classList.remove('hidden');
+    };
+    closeQR.onclick = ()=> qrModal.classList.add('hidden');
+
+    function toggleClassOnRoot(cls){
+      document.body.classList.toggle(cls);
+      localStorage.setItem('pref_'+cls, document.body.classList.contains(cls) ? '1':'0');
+      // Modo Vovó expande listas e liga TTS
+      if(cls==='grandma'){
+        const on = document.body.classList.contains('grandma');
+        ttsEnabled = on || localStorage.getItem('pref_tts')==='1';
+        if(on){ itemsExpanded = true; giftsExpanded = true; applyItemsScrollCap(); applyGiftsScrollCap(); }
+      }
+    }
+    function restoreToggles(){
+      ['grandma','high-contrast','reduce-motion'].forEach(k=>{
+        if(localStorage.getItem('pref_'+k)==='1') document.body.classList.add(k);
+      });
+      ttsEnabled = (localStorage.getItem('pref_tts')==='1') || document.body.classList.contains('grandma');
+    }
+
+    toggleGrandma.onclick = ()=> toggleClassOnRoot('grandma');
+    toggleContrast.onclick = ()=> toggleClassOnRoot('high-contrast');
+    toggleMotion.onclick = ()=> toggleClassOnRoot('reduce-motion');
+
+    const HELP_MSG = encodeURIComponent('Oi! Não consegui entrar no site do churrasco. Pode me ajudar?');
+    function openHelp(){
+      helpWhats.href = `https://wa.me/${ADMIN_WHATSAPP.replace(/\D/g,'')}?text=${HELP_MSG}`;
+      helpTel.href = `tel:${ADMIN_PHONE.replace(/\D/g,'')}`;
+      helpModal.classList.remove('hidden');
+    }
+    btnHelpTop.onclick = openHelp;
+    btnHelpBottom.onclick = openHelp;
+    closeHelp.onclick = ()=> helpModal.classList.add('hidden');
+
+    btnRepeatVoice.onclick = ()=> speak('Passo a passo. Um: toque em Participar. Dois: digite seu nome e o PIN da família. Três: escolha um presente, ou toque em Adicionar item.');
+    btnArrived.onclick = ()=>{
+      confetti(); speak('Bem vinda, bem vindo! Boa festa!');
+    };
+
+    btnGuidedRead.onclick = guidedRead;
+
     // ===== Auth UI (desktop + mobile) =====
     function renderAuthBars(){
       const bars = [authBarDesktop, authBarMobile];
@@ -562,7 +800,7 @@ END:VCALENDAR`;
         wrap.className = 'flex items-center gap-2';
         wrap.innerHTML = `
           <span class="text-sm">Olá, <strong>${escapeHtml(profileName)}</strong></span>
-          <button data-admin class="btn btn-ghost text-xs">${isAdmin ? 'Sair do modo anfitrião' : 'Entrar como anfitrião'}</button>
+          <button data-admin class="btn btn-ghost text-xs"> ${isAdmin ? 'Sair do modo anfitrião' : 'Entrar como anfitrião'} </button>
           <button data-logout class="btn btn-ghost text-xs">Sair</button>
         `;
         targetEl.appendChild(wrap);
@@ -571,7 +809,7 @@ END:VCALENDAR`;
           await signOut(auth);
           localStorage.clear();
           profileName=''; pinOK=false; isAdmin=false;
-          renderAuthBars(); rerenderLists(); renderAdminPanel();
+          renderAuthBars(); rerenderLists(); renderAdminPanel(); renderMyStuff();
         };
         wrap.querySelector('[data-admin]').onclick = ()=>{
           if(isAdmin){ isAdmin=false; localStorage.removeItem('isAdmin'); }
@@ -593,7 +831,7 @@ END:VCALENDAR`;
           pin.className = 'input w-28'; pin.placeholder = 'PIN';
 
           const btn = document.createElement('button');
-          btn.className = 'btn btn-primary text-sm'; btn.textContent = 'Entrar';
+          btn.className = 'btn btn-primary text-sm'; btn.textContent = 'Participar';
           btn.onclick = async ()=>{
             const n = (name.value||'').trim();
             const p = norm(pin.value);
@@ -605,14 +843,14 @@ END:VCALENDAR`;
               profileName = n; pinOK = true;
               localStorage.setItem('profileName',profileName);
               localStorage.setItem('pinOK','true');
-              renderAuthBars();
+              renderAuthBars(); showToast('Você entrou!'); speak('Pronto! Você entrou.');
             }catch(e){ console.error(e); alert('Erro ao entrar'); }
-            btn.disabled = false; btn.textContent = 'Entrar';
+            btn.disabled = false; btn.textContent = 'Participar';
           };
           targetEl.append(name,pin,btn);
         } else {
           const btn = document.createElement('button');
-          btn.className = 'btn btn-primary text-sm'; btn.textContent = 'Entrar';
+          btn.className = 'btn btn-primary text-sm'; btn.textContent = 'Participar';
           btn.onclick = ()=> authModal.classList.remove('hidden');
           targetEl.appendChild(btn);
         }
@@ -622,11 +860,13 @@ END:VCALENDAR`;
         bars.forEach(renderLogged);
         addItemCard.classList.remove('hidden');
         floatingJoinBtn.classList.add('hidden');
+        myStuff.classList.remove('hidden');
       }else{
         renderAnon(authBarDesktop);
         renderAnon(authBarMobile);
         addItemCard.classList.add('hidden');
         floatingJoinBtn.classList.remove('hidden');
+        myStuff.classList.add('hidden');
       }
     }
 
@@ -647,7 +887,7 @@ END:VCALENDAR`;
         localStorage.setItem('profileName',profileName);
         localStorage.setItem('pinOK','true');
         authModal.classList.add('hidden');
-        renderAuthBars();
+        renderAuthBars(); showToast('Você entrou!'); speak('Pronto! Você entrou.');
       }catch(e){ console.error(e); alert('Erro ao entrar'); }
       doLoginBtn.disabled = false; doLoginBtn.textContent = 'Entrar';
     });
@@ -661,25 +901,62 @@ END:VCALENDAR`;
       cfgLocation.value = EVENT.location||'';
       cfgNotes.value    = EVENT.notes||'';
       cfgCols.value     = String(EVENT.giftsCols||2);
+      cfgLockHrs.value  = EVENT.lockHoursBefore||0;
+      pinNoteText.value = EVENT.pinnedNote?.text || '';
+      pinNoteUntil.value= EVENT.pinnedNote?.untilISO || '';
     }
     saveCfg.onclick = async ()=>{
       EVENT.location = cfgLocation.value || EVENT.location;
       EVENT.notes    = cfgNotes.value || EVENT.notes;
       EVENT.giftsCols= parseInt(cfgCols.value||'2',10);
+      EVENT.lockHoursBefore = Math.max(0, parseInt(cfgLockHrs.value||'0',10));
       await setDoc(eventDocRef, {
-        location: EVENT.location, notes: EVENT.notes, giftsCols: EVENT.giftsCols
+        location: EVENT.location, notes: EVENT.notes, giftsCols: EVENT.giftsCols,
+        lockHoursBefore: EVENT.lockHoursBefore
       }, { merge:true });
-      updateEventHeader();
-      applyGiftsScrollCap();
-      alert('Configurações salvas!');
+      updateEventHeader(); applyGiftsScrollCap(); showToast('Configurações salvas!');
     };
 
+    savePinnedNote.onclick = async ()=>{
+      const text = pinNoteText.value||'';
+      const untilISO = pinNoteUntil.value||'';
+      EVENT.pinnedNote = { text, untilISO };
+      await setDoc(eventDocRef, { pinnedNote: EVENT.pinnedNote }, { merge:true });
+      showToast('Nota fixada!'); renderPinnedNote(EVENT.pinnedNote);
+    };
+    clearPinnedNote.onclick = async ()=>{
+      EVENT.pinnedNote = { text:'', untilISO:'' };
+      await setDoc(eventDocRef, { pinnedNote: EVENT.pinnedNote }, { merge:true });
+      showToast('Nota removida!'); renderPinnedNote(EVENT.pinnedNote);
+    };
+
+    closePinnedNote.onclick = ()=> pinnedNoteWrap.classList.add('hidden');
+    function renderPinnedNote(pn){
+      const now = new Date();
+      const until = pn?.untilISO ? new Date(pn.untilISO) : null;
+      if(pn?.text && (!until || until>now)){
+        pinnedNoteText.textContent = pn.text;
+        pinnedNoteWrap.classList.remove('hidden');
+      }else{
+        pinnedNoteWrap.classList.add('hidden');
+      }
+    }
+
     // ===== Render helpers =====
+    function isLocked(){
+      const hrs = EVENT.lockHoursBefore||0;
+      if(hrs<=0) return false;
+      const now = new Date();
+      const start = new Date(EVENT.dateISO);
+      const diffH = (start - now) / (1000*60*60);
+      return diffH <= hrs;
+    }
+
     function itemCard(docId, d){
       const owner = d.ownerName || 'Família';
       const qty   = d.qty ? `${d.qty} ${d.unit||''}`.trim() : '';
       const isMine= currentUser && d.ownerUid===currentUser?.uid;
-      const canRemove = isMine || isAdmin;
+      const canRemove = (isMine || isAdmin) && !isLocked();
       return `
         <div class="card p-4">
           <div class="flex items-start gap-3">
@@ -703,15 +980,18 @@ END:VCALENDAR`;
 
     function giftCard(docId,g){
       const reserved = !!g.reservedByName;
+      const purchased = !!g.purchased;
       const who = reserved? `por <strong>${escapeHtml(g.reservedByName)}</strong>` : 'disponível';
-      const btnReserve = reserved ? '' : `<button data-reserve="${docId}" class="btn btn-primary text-xs">Vou levar</button>`;
+      const disableReserve = isLocked() && !isAdmin;
+      const btnReserve = (reserved || disableReserve) ? '' : `<button data-reserve="${docId}" class="btn btn-primary text-xs">Vou levar</button>`;
       const btnFree = (reserved && isAdmin) ? `<button data-free="${docId}" class="btn btn-ghost text-xs">Liberar</button>` : '';
+      const badgePurchased = purchased? `<span class="ml-2 text-green-700 text-xs">comprei ✅</span>`:'';
       return `
         <div class="card p-3 flex items-center justify-between">
           <div>
             <div class="font-medium">${escapeHtml(g.title)}</div>
             <div class="text-xs text-gray-700">${g.qty?`Qtd: ${escapeHtml(String(g.qty))}`:''}
-              <span class="${reserved?'text-green-700':'text-gray-600'} ml-2">${who}</span>
+              <span class="${reserved?'text-green-700':'text-gray-600'} ml-2">${who}${badgePurchased}</span>
             </div>
           </div>
           <div class="flex items-center gap-2">${btnReserve}${btnFree}</div>
@@ -750,7 +1030,9 @@ END:VCALENDAR`;
     function applyItemsScrollCap() {
       const manyItems = itemsList.children.length > 4;
       const btns = [toggleItemsBtn, toggleItemsBtnTop];
-      if (itemsExpanded || !manyItems) {
+      const grandma = document.body.classList.contains('grandma');
+
+      if (itemsExpanded || !manyItems || grandma) {
         itemsList.style.maxHeight = '';
         itemsList.classList.remove('overflow-auto','pr-2');
         itemsFade.style.display = 'none';
@@ -799,8 +1081,9 @@ END:VCALENDAR`;
       const visible = 6.5;
       const manyItems = giftsList.children.length > Math.floor(visible);
       const btns = [toggleGiftsBtn, toggleGiftsBtnTop];
+      const grandma = document.body.classList.contains('grandma');
 
-      if (giftsExpanded || !manyItems) {
+      if (giftsExpanded || !manyItems || grandma) {
         giftsList.style.maxHeight = '';
         giftsList.classList.remove('overflow-auto','pr-2');
         btns.forEach(b=>b.classList.add('hidden'));
@@ -856,15 +1139,53 @@ END:VCALENDAR`;
       };
       toastClose.onclick = clear;
       toastUndo.onclick = async ()=>{ clear(); if(onUndo) await onUndo(); };
-      if(autoHideMs>0){
-        undoTimer = setTimeout(clear, autoHideMs);
-      }
+      if(autoHideMs>0){ undoTimer = setTimeout(clear, autoHideMs); }
     }
+
+    // ===== Sugestões & autocategorização
+    const SUGG = [
+      {n:'Picanha',c:'Carnes'}, {n:'Linguiça',c:'Carnes'}, {n:'Frango',c:'Carnes'}, {n:'Carvão',c:'Utensílios'},
+      {n:'Pão de alho',c:'Acompanhamentos'}, {n:'Farofa',c:'Acompanhamentos'}, {n:'Vinagrete',c:'Acompanhamentos'},
+      {n:'Cerveja',c:'Bebidas'}, {n:'Refrigerante',c:'Bebidas'}, {n:'Suco',c:'Bebidas'}, {n:'Água',c:'Bebidas'},
+      {n:'Gelo',c:'Utensílios'}, {n:'Guardanapos',c:'Utensílios'}, {n:'Pratos descartáveis',c:'Utensílios'}
+    ];
+    const CAT_KEYWORDS = {
+      'Carnes':['picanha','carne','frango','linguiça','maminha','alcatra','costela'],
+      'Bebidas':['cerveja','refrigerante','refri','suco','água','agua','vinho','drink'],
+      'Acompanhamentos':['farofa','pão','pao','vinagrete','maionese','arroz','salada'],
+      'Utensílios':['carvão','carvao','gelo','prato','pratos','copos','talher','guardanapo','descartável','panos']
+    };
+    const normalize = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+    const nameInput = document.getElementById('itemName');
+    nameInput.addEventListener('input', ()=>{
+      const v = nameInput.value.trim();
+      if(!v){ itemSuggest.classList.add('hidden'); itemSuggest.innerHTML=''; return; }
+      const nv = normalize(v);
+      const list = SUGG.filter(s => normalize(s.n).includes(nv)).slice(0,6);
+      if(!list.length){ itemSuggest.classList.add('hidden'); itemSuggest.innerHTML=''; return; }
+      itemSuggest.innerHTML = list.map(s=>`<button type="button" data-sugg="${escapeHtml(s.n)}" class="w-full text-left px-3 py-2 hover:bg-gray-50">${escapeHtml(s.n)} <span class="text-xs text-gray-500">(${s.c})</span></button>`).join('');
+      itemSuggest.classList.remove('hidden');
+
+      // autocategoriza conforme digita
+      for(const [cat,words] of Object.entries(CAT_KEYWORDS)){
+        if(words.some(w=> nv.includes(w))){ document.getElementById('itemCategory').value = cat; break; }
+      }
+    });
+    itemSuggest.addEventListener('click', (e)=>{
+      const b = e.target.closest('[data-sugg]'); if(!b) return;
+      nameInput.value = b.getAttribute('data-sugg');
+      // seta categoria sugerida
+      const sug = SUGG.find(s=>s.n===nameInput.value);
+      if(sug) document.getElementById('itemCategory').value = sug.c;
+      itemSuggest.classList.add('hidden');
+    });
+    document.addEventListener('click', (e)=>{ if(!itemSuggest.contains(e.target) && e.target!==nameInput){ itemSuggest.classList.add('hidden'); } });
 
     // ===== Rerender Lists from cache
     function rerenderLists(){
       // --- Items: filtrar/buscar/ordenar
-      const term = (searchItems.value||'').trim().toLowerCase();
+      const term = (searchItems?.value||'').trim().toLowerCase();
       let items = cacheItems.filter(x=>!x.data.deleted);
       if(filterCategory !== 'Todos'){
         items = items.filter(x=> (x.data.category||'Outros')===filterCategory);
@@ -877,47 +1198,41 @@ END:VCALENDAR`;
              || (d.notes||'').toLowerCase().includes(term);
         });
       }
-      // ordenar
-      if(itemsSort.value==='owner'){
+      if(itemsSort?.value==='owner'){
         items.sort((a,b)=> (a.data.ownerName||'').localeCompare(b.data.ownerName||''));
-      }else if(itemsSort.value==='name'){
+      }else if(itemsSort?.value==='name'){
         items.sort((a,b)=> (a.data.name||'').localeCompare(b.data.name||''));
-      }else{ // recent
-        // já vem por createdAt desc do snapshot; mantém
-      }
+      } // 'recent' já vem do snapshot desc
 
-      // contadores
       const totalAll = cacheItems.filter(x=>!x.data.deleted).length;
       const distinctOwners = new Set(cacheItems.filter(x=>!x.data.deleted).map(x=>x.data.ownerUid||x.data.ownerName||'--')).size;
       itemsCounters.textContent = `Participantes: ${distinctOwners} • Total de itens: ${totalAll}`;
 
-      // render
       itemsList.innerHTML = '';
       if(loadingItems){
-        // skeletons
-        for(let i=0;i<3;i++){
-          itemsList.insertAdjacentHTML('beforeend', `<div class="skeleton h-20"></div>`);
-        }
+        for(let i=0;i<3;i++) itemsList.insertAdjacentHTML('beforeend', `<div class="skeleton h-20"></div>`);
       }else if(items.length===0){
         itemsList.innerHTML = `<div class="text-sm text-gray-700 text-center py-6">Ainda ninguém combinou nada. Que tal ser o primeiro? 🙌</div>`;
       }else{
-        items.forEach(({id,data})=>{
-          itemsList.insertAdjacentHTML('beforeend', itemCard(id,data));
-        });
+        items.forEach(({id,data})=> itemsList.insertAdjacentHTML('beforeend', itemCard(id,data)));
       }
-      // binds remove
+
+      // binds remove (debounce 1s)
       itemsList.querySelectorAll('[data-del]').forEach(btn=>{
         btn.onclick = async ()=>{
+          if(isLocked() && !isAdmin){ alert('Edições travadas pelo anfitrião perto do evento.'); return; }
+          if(btn.disabled) return;
           const id = btn.getAttribute('data-del');
           if(!confirm('Remover este item?')) return;
+          btn.disabled = true; setTimeout(()=>btn.disabled=false, 1000);
           await setDoc(doc(db,'events',EVENT.id,'bringItems',id), { deleted:true }, { merge:true });
+          speak('Item removido.');
         };
       });
 
-      // badge
       itemsCountBadge.textContent = totalAll ? `${totalAll} item(ns) combinados` : '';
 
-      // --- Gifts: filtrar por aba
+      // --- Gifts por aba
       let gifts = cacheGifts.filter(x=>!x.data.deleted);
       const avail = gifts.filter(x=>!x.data.reservedByName);
       const resvd = gifts.filter(x=>!!x.data.reservedByName);
@@ -929,15 +1244,16 @@ END:VCALENDAR`;
       }else if(gifts.length===0){
         giftsList.innerHTML = `<div class="text-sm text-gray-700 text-center py-6">Nada por aqui ${giftsTab==='available'?'por enquanto.':'— tudo que tinha já foi reservado. 💙'}</div>`;
       }else{
-        gifts.forEach(({id,data})=>{
-          giftsList.insertAdjacentHTML('beforeend', giftCard(id,data));
-        });
+        gifts.forEach(({id,data})=> giftsList.insertAdjacentHTML('beforeend', giftCard(id,data)));
       }
 
       // binds gifts
       giftsList.querySelectorAll('[data-reserve]').forEach(btn=>{
         btn.onclick = async ()=>{
           if(!(currentUser && pinOK && profileName)){ alert('Entre com seu nome e PIN.'); return; }
+          if(btn.disabled) return;
+          if(isLocked() && !isAdmin){ alert('Reservas travadas pelo anfitrião perto do evento.'); return; }
+          btn.disabled = true; setTimeout(()=>btn.disabled=false, 1000); // debounce
           const id = btn.getAttribute('data-reserve');
           const ref = doc(db,'events',EVENT.id,'gifts',id);
           await updateDoc(ref,{
@@ -946,12 +1262,15 @@ END:VCALENDAR`;
             reservedAt: serverTimestamp()
           });
           undoGiftDoc = ref;
+          confetti();
           showToast('Presente reservado!', async ()=>{
             if(undoGiftDoc){
-              await updateDoc(undoGiftDoc,{ reservedByName:null,reservedByUid:null,reservedAt:null });
+              await updateDoc(undoGiftDoc,{ reservedByName:null,reservedByUid:null,reservedAt:null, purchased:false, purchasedAt:null, purchasedByUid:null });
               undoGiftDoc = null;
+              speak('Reserva desfeita.');
             }
           });
+          speak('Pronto! Você reservou o presente.');
         };
       });
       giftsList.querySelectorAll('[data-free]').forEach(btn=>{
@@ -959,10 +1278,12 @@ END:VCALENDAR`;
           if(!isAdmin) { alert('Apenas anfitrião.'); return; }
           const id = btn.getAttribute('data-free');
           await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{
-            reservedByName: null, reservedByUid: null, reservedAt: null
+            reservedByName: null, reservedByUid: null, reservedAt: null, purchased:false, purchasedAt:null, purchasedByUid:null
           });
         };
       });
+
+      // admin list
       adminGiftsList.innerHTML = '';
       cacheGifts.forEach(({id,data})=>{
         if(data.deleted) return;
@@ -987,6 +1308,9 @@ END:VCALENDAR`;
       // aplicar cortes
       applyItemsScrollCap();
       applyGiftsScrollCap();
+
+      // meus combinados
+      renderMyStuff();
     }
 
     // Abas presentes
@@ -1014,39 +1338,57 @@ END:VCALENDAR`;
       rerenderLists();
     });
 
-    // Config do evento (somente location/notes/giftsCols; NÃO PIN)
+    // Config do evento (location/notes/giftsCols/lock/pinned)
     onSnapshot(eventDocRef, (ds)=>{
       if(ds.exists()){
         const cfg = ds.data();
-        EVENT.location  = cfg.location ?? EVENT.location;
-        EVENT.notes     = cfg.notes ?? EVENT.notes;
-        EVENT.giftsCols = cfg.giftsCols ?? EVENT.giftsCols;
+        EVENT.location       = cfg.location ?? EVENT.location;
+        EVENT.notes          = cfg.notes ?? EVENT.notes;
+        EVENT.giftsCols      = cfg.giftsCols ?? EVENT.giftsCols;
+        EVENT.lockHoursBefore= cfg.lockHoursBefore ?? EVENT.lockHoursBefore;
+        EVENT.pinnedNote     = cfg.pinnedNote ?? EVENT.pinnedNote;
         updateEventHeader();
         renderAdminPanel();
         applyGiftsScrollCap();
+        renderPinnedNote(EVENT.pinnedNote);
       }
     });
 
-    // ===== Add item =====
+    // ===== Add item (anti-duplicados) =====
     addItemForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       if(!(currentUser && pinOK && profileName)){ alert('Entre com seu nome e PIN.'); return; }
+      if(isLocked() && !isAdmin){ alert('Edições travadas pelo anfitrião perto do evento.'); return; }
+
       const name = document.getElementById('itemName').value.trim();
       const qty  = parseFloat(document.getElementById('itemQty').value || '');
       const unit = document.getElementById('itemUnit').value.trim();
       const notes= document.getElementById('itemNotes').value.trim();
       const category = document.getElementById('itemCategory').value || 'Outros';
       if(!name){ alert('Digite o item'); return; }
+
+      // anti-duplicado simples por nome normalizado
+      const nname = normalize(name);
+      const dup = cacheItems.find(x=>!x.data.deleted && normalize(x.data.name)===nname);
+      if(dup){
+        const ok = confirm(`Já existe "${dup.data.name}". Deseja somar a quantidade ao existente?`);
+        if(ok){
+          const newQty = (parseFloat(dup.data.qty||0) || 0) + (isNaN(qty)?0:qty);
+          await updateDoc(doc(db,'events',EVENT.id,'bringItems',dup.id), { qty: isNaN(newQty)?null:newQty, notes: (dup.data.notes||'') + (notes? (' • '+notes):'') });
+          showToast('Quantidade atualizada!'); e.target.reset(); return;
+        }
+      }
+
       await addDoc(itemsCol,{
         name, qty: isNaN(qty)?null:qty, unit, notes, category,
         ownerName: profileName, ownerUid: currentUser.uid,
         createdAt: serverTimestamp(), deleted:false
       });
       e.target.reset();
-      showToast('Item adicionado!');
+      confetti(); showToast('Item adicionado!'); speak('Item adicionado.');
     });
 
-    // ===== Seed de presentes (uma vez) =====
+    // ===== Seed presentes (uma vez) =====
     async function seedGiftsIfEmpty(){
       const snap = await getDocs(giftsCol);
       if(snap.empty){
@@ -1068,7 +1410,7 @@ END:VCALENDAR`;
     }
     seedGiftsIfEmpty();
 
-    // ===== Export CSV =====
+    // ===== Export CSV / PDF =====
     function toCSV(rows){
       return rows.map(r=> r.map(v=>{
         const s = (v==null?'':String(v)).replace(/"/g,'""');
@@ -1085,13 +1427,40 @@ END:VCALENDAR`;
       setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
     };
     btnExportGifts.onclick = ()=>{
-      const rows = [['Presente','Qtd','Status','Por quem']];
+      const rows = [['Presente','Qtd','Status','Por quem','Comprei']];
       cacheGifts.filter(x=>!x.data.deleted).forEach(x=>{
-        const d=x.data; rows.push([d.title||'', d.qty||'', d.reservedByName?'Reservado':'Disponível', d.reservedByName||'']);
+        const d=x.data; rows.push([d.title||'', d.qty||'', d.reservedByName?'Reservado':'Disponível', d.reservedByName||'', d.purchased?'Sim':'Não']);
       });
       const blob = new Blob([toCSV(rows)],{type:'text/csv'});
       const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='presentes.csv'; a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+    };
+    btnPrintPDF.onclick = ()=>{
+      const w = window.open('', '_blank');
+      const totalGifts = cacheGifts.filter(x=>!x.data.deleted).length;
+      const doneGifts  = cacheGifts.filter(x=>!x.data.deleted && x.data.reservedByName).length;
+      const html = `
+      <html><head><title>Resumo — Tia Amélia</title>
+      <style>body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:24px} h1{margin:0 0 8px} .small{color:#555}
+      table{border-collapse:collapse;width:100%;margin-top:12px} td,th{border:1px solid #ccc;padding:6px;text-align:left;font-size:13px}</style>
+      </head><body>
+      <h1>89 anos da Tia Amélia 🎉</h1>
+      <div class="small">${new Date(EVENT.dateISO).toLocaleString('pt-BR')} — ${EVENT.location}</div>
+      <h2>Presentes (${doneGifts}/${totalGifts})</h2>
+      <table><tr><th>Presente</th><th>Qtd</th><th>Status</th><th>Por quem</th><th>Comprei</th></tr>
+      ${cacheGifts.filter(x=>!x.data.deleted).map(x=>{
+        const d=x.data; return `<tr><td>${d.title||''}</td><td>${d.qty||''}</td><td>${d.reservedByName?'Reservado':'Disponível'}</td><td>${d.reservedByName||''}</td><td>${d.purchased?'✅':''}</td></tr>`;
+      }).join('')}
+      </table>
+      <h2>Quem leva o quê</h2>
+      <table><tr><th>Item</th><th>Qtd</th><th>Unid</th><th>Categoria</th><th>Observações</th><th>Quem leva</th></tr>
+      ${cacheItems.filter(x=>!x.data.deleted).map(x=>{
+        const d=x.data; return `<tr><td>${d.name||''}</td><td>${d.qty||''}</td><td>${d.unit||''}</td><td>${d.category||''}</td><td>${d.notes||''}</td><td>${d.ownerName||''}</td></tr>`;
+      }).join('')}
+      </table>
+      <p class="small">QR do Maps: ${EVENT.location}</p>
+      </body></html>`;
+      w.document.write(html); w.document.close(); w.focus(); w.print();
     };
 
     // ===== Modo TV =====
@@ -1101,7 +1470,6 @@ END:VCALENDAR`;
       window.location.href = url.toString();
     };
     if(new URL(window.location.href).searchParams.get('tv')==='1'){
-      // Oculta tudo e mostra painel simples
       document.querySelector('header').style.display='none';
       document.querySelector('footer').style.display='none';
       document.getElementById('adminPanel').style.display='none';
@@ -1142,7 +1510,6 @@ END:VCALENDAR`;
         tv.querySelector('#tvTicker').textContent = `${d.ownerName||'Família'} vai levar ${d.name}${d.qty?` — ${d.qty} ${d.unit||''}`:''}`;
       }, 4000);
 
-      // Atualiza progresso
       function updateTVProgress(){
         const totalGifts = cacheGifts.filter(x=>!x.data.deleted).length;
         const doneGifts  = cacheGifts.filter(x=>!x.data.deleted && x.data.reservedByName).length;
@@ -1154,20 +1521,107 @@ END:VCALENDAR`;
       rerenderLists = function(){ _orig(); updateTVProgress(); };
     }
 
+    // ===== Meus combinados =====
+    function renderMyStuff(){
+      if(!(currentUser && pinOK && profileName)){ myStuff.classList.add('hidden'); return; }
+      myStuff.classList.remove('hidden');
+      myItems.innerHTML = '';
+      cacheItems.filter(x=>!x.data.deleted && x.data.ownerUid===currentUser?.uid)
+        .forEach(({id,data})=>{
+          myItems.insertAdjacentHTML('beforeend', `
+            <div class="card p-3 flex items-center justify-between">
+              <div class="text-sm"><strong>${escapeHtml(data.name)}</strong> ${data.qty?`<span class="text-gray-600">(${data.qty} ${data.unit||''})</span>`:''}</div>
+              <button data-del="${id}" class="btn btn-ghost text-xs">Remover</button>
+            </div>`);
+        });
+      myItems.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.onclick = async ()=>{
+          if(isLocked() && !isAdmin){ alert('Edições travadas pelo anfitrião.'); return; }
+          const id = btn.getAttribute('data-del');
+          if(!confirm('Remover este item?')) return;
+          await setDoc(doc(db,'events',EVENT.id,'bringItems',id), { deleted:true }, { merge:true });
+        };
+      });
+
+      myGifts.innerHTML = '';
+      cacheGifts.filter(x=>!x.data.deleted && x.data.reservedByUid===currentUser?.uid)
+        .forEach(({id,data})=>{
+          myGifts.insertAdjacentHTML('beforeend', `
+            <div class="card p-3 flex items-center justify-between">
+              <div class="text-sm"><strong>${escapeHtml(data.title)}</strong> ${data.qty?`<span class="text-gray-600">(${data.qty})</span>`:''} ${data.purchased?' <span class="text-green-700">comprei ✅</span>':''}</div>
+              <div class="flex gap-2">
+                <button data-unreserve="${id}" class="btn btn-ghost text-xs">Desfazer reserva</button>
+                <button data-bought="${id}" class="btn btn-primary text-xs">${data.purchased?'Desmarcar':'Comprei'}</button>
+              </div>
+            </div>`);
+        });
+      myGifts.querySelectorAll('[data-unreserve]').forEach(btn=>{
+        btn.onclick = async ()=>{
+          const id = btn.getAttribute('data-unreserve');
+          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{ reservedByName:null,reservedByUid:null,reservedAt:null,purchased:false,purchasedAt:null,purchasedByUid:null });
+        };
+      });
+      myGifts.querySelectorAll('[data-bought]').forEach(btn=>{
+        btn.onclick = async ()=>{
+          const id = btn.getAttribute('data-bought');
+          const g = cacheGifts.find(x=>x.id===id)?.data || {};
+          const newState = !g.purchased;
+          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{ purchased:newState, purchasedAt: newState? serverTimestamp(): null, purchasedByUid: newState? currentUser?.uid : null });
+        };
+      });
+    }
+
+    // ===== Confete simples =====
+    function confetti(){
+      if(document.body.classList.contains('reduce-motion')) return;
+      const colors = ['#f87171','#fbbf24','#34d399','#60a5fa','#a78bfa','#f472b6'];
+      for(let i=0;i<24;i++){
+        const div = document.createElement('div');
+        div.style.position='fixed'; div.style.top='-10px'; div.style.left = (Math.random()*100)+'%';
+        div.style.width='8px'; div.style.height='12px'; div.style.background=colors[(Math.random()*colors.length)|0];
+        div.style.opacity='0.9'; div.style.zIndex='70'; div.style.transform=`rotate(${Math.random()*360}deg)`;
+        document.body.appendChild(div);
+        const endY = window.innerHeight + 20;
+        const dur = 700 + Math.random()*800;
+        const drift = (Math.random()*100 - 50) + 'px';
+        div.animate([
+          { transform: div.style.transform+' translate(0,0)', opacity:1 },
+          { transform: 'translate('+drift+','+endY+'px) rotate(360deg)', opacity:0.9 }
+        ], { duration: dur, easing:'ease-out' });
+        setTimeout(()=> div.remove(), dur);
+      }
+    }
+
+    // ===== Guided Read (destaca e lê) =====
+    async function guidedRead(){
+      const steps = [
+        {el: document.getElementById('heroCard'), t:'Este é o resumo do evento. Aqui você vê a data e um contador.'},
+        {el: document.getElementById('itemsCard'), t:'Nesta parte, combinamos quem leva o quê.'},
+        {el: document.getElementById('giftsCard'), t:'Aqui você reserva os presentes para a Tia Amélia.'}
+      ];
+      for(const s of steps){
+        try{ s.el.classList.add('guided'); }catch(e){}
+        speak(s.t);
+        await new Promise(r=> setTimeout(r, 2000));
+        try{ s.el.classList.remove('guided'); }catch(e){}
+      }
+      speak('Prontinho. Qualquer dúvida, toque em Preciso de ajuda.');
+    }
+
     // ===== Inicial =====
     renderAuthBars();
     renderAdminPanel();
 
-    // Ações extras
-    document.addEventListener('click', (e)=>{
-      // acessibilidade: chips de filtro como toggle (teclado)
-      if(e.target.matches('.chip') && e.target.hasAttribute('data-filter')){
-        document.querySelectorAll('[data-filter]').forEach(x=>x.setAttribute('aria-pressed','false'));
-        e.target.setAttribute('aria-pressed','true');
-      }
-    });
+    // Ajuda
+    document.getElementById('btnHelpTop')?.addEventListener('click', openHelp);
+    document.getElementById('btnHelpBottom')?.addEventListener('click', openHelp);
 
-    // Regras Firestore (lembrete)
+    // ===== Service Worker (opcional): se /sw.js existir, registra
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/sw.js').catch(()=>{/* opcional */});
+    }
+
+    // ===== Regras Firestore (lembrete)
     // rules_version = '2';
     // service cloud.firestore {
     //   match /databases/{database}/documents {
@@ -1183,5 +1637,29 @@ END:VCALENDAR`;
     //   }
     // }
   </script>
+
+  <!--
+    (Opcional) Para PWA completo/offline do HTML também:
+    crie um arquivo /sw.js na raiz do seu GitHub Pages com:
+
+    const CACHE = 'tia-amelia-v1';
+    const ASSETS = ['/', '/index.html'];
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(()=>self.skipWaiting()));
+    });
+    self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+    self.addEventListener('fetch', e => {
+      const req = e.request;
+      e.respondWith(
+        caches.match(req).then(cached => cached || fetch(req).then(res=>{
+          const copy = res.clone();
+          caches.open(CACHE).then(c=> c.put(req, copy));
+          return res;
+        }).catch(()=> cached))
+      );
+    });
+
+    (Manifest é opcional; para “Adicionar à tela inicial”, o iOS/Android já permitem via menu do navegador.)
+  -->
 </body>
 </html>
