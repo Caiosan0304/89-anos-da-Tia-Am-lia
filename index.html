@@ -4,30 +4,93 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>89 anos da Tia Amélia 🎉 | Churrasco Comunitário</title>
+
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+
   <meta name="description" content="Organizador interativo do churrasco comunitário da Tia Amélia (89). Reserve presentes, cadastre o que vai levar e acompanhe o progresso em tempo real." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+
+  <!-- Estilos utilitários (sem @apply) -->
   <style>
-    .card { @apply rounded-2xl shadow-lg p-4 bg-white; }
-    .btn { @apply rounded-xl px-4 py-2 font-medium shadow hover:shadow-md transition; }
-    .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
-    .btn-ghost { @apply bg-white border border-gray-300 hover:bg-gray-50; }
-    .tag { @apply text-xs px-2 py-1 rounded-full bg-gray-100; }
-    .input { @apply w-full rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:border-blue-400; }
+    :root{
+      --ring:#2563eb;
+      --card:#ffffff;
+      --border:#e5e7eb;
+      --soft:#f8fafc;
+    }
+    .card{background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;border-radius:.75rem;padding:.5rem .9rem;border:1px solid var(--border);background:#fff}
+    .btn:focus{outline:2px solid var(--ring);outline-offset:2px}
+    .btn-primary{background:#2563eb;color:#fff;border-color:#2563eb}
+    .btn-ghost{background:#fff}
+    .input{width:100%;border:1px solid var(--border);border-radius:.75rem;padding:.55rem .75rem}
+    .input:focus{outline:2px solid var(--ring);outline-offset:2px}
+    .tag{display:inline-block;font-size:.75rem;padding:.2rem .5rem;border-radius:999px;background:#f3f4f6}
+    /* grid de presentes com controle por CSS var */
+    #giftsList{--cols:2;display:grid;grid-template-columns:repeat(var(--cols), minmax(0,1fr));gap:.5rem}
+    @media (min-width:1024px){ #giftsList{--cols:3} }
+    /* fundo */
+    body{background:linear-gradient(to bottom,#eff6ff, #fff, #fff5f5)}
+    /* header fixo com blur */
+    header.sticky{backdrop-filter:saturate(140%) blur(6px);background:rgba(255,255,255,.75)}
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-b from-blue-50 via-white to-rose-50 text-gray-800">
-  <header class="sticky top-0 z-30 bg-white/70 backdrop-blur border-b">
+
+<body class="min-h-screen text-gray-800">
+  <!-- HEADER -->
+  <header class="sticky top-0 z-30 border-b">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
       <div class="text-2xl">🎉</div>
       <div class="flex-1">
         <h1 class="text-lg sm:text-xl font-bold">89 anos da Tia Amélia</h1>
-        <p id="eventDateText" class="text-sm text-gray-600"></p>
+        <p id="eventDateText" class="text-sm text-gray-600">Sábado — data a definir</p>
       </div>
+
+      <!-- auth -->
       <div id="authArea" class="flex items-center gap-2"></div>
+    </div>
+
+    <!-- painel anfitrião -->
+    <div id="hostPanel" class="hidden border-t">
+      <div class="max-w-6xl mx-auto px-4 py-3 grid md:grid-cols-3 gap-3">
+        <div class="card">
+          <h3 class="font-semibold mb-2">Configurações do evento</h3>
+          <label class="text-sm block mb-1">Local</label>
+          <input id="cfgLocation" class="input mb-2" placeholder="Ex.: Casa da família" />
+          <label class="text-sm block mb-1">Observações</label>
+          <input id="cfgObs" class="input mb-2" placeholder="Ex.: Leve amor, fome e boas histórias!" />
+          <label class="text-sm block mb-1">Colunas da lista de presentes</label>
+          <select id="cfgCols" class="input mb-3">
+            <option value="1">1 coluna</option>
+            <option value="2" selected>2 colunas</option>
+            <option value="3">3 colunas</option>
+          </select>
+          <button id="saveMetaBtn" class="btn btn-primary w-full">Salvar</button>
+        </div>
+        <div class="card">
+          <h3 class="font-semibold mb-2">Segurança</h3>
+          <label class="text-sm block mb-1">PIN da família</label>
+          <input id="cfgFamilyPIN" class="input mb-2" placeholder="AMELIA89" />
+          <label class="text-sm block mb-1">PIN do anfitrião</label>
+          <input id="cfgAdminPIN" class="input mb-4" placeholder="HOST2025" />
+          <button id="savePinsBtn" class="btn w-full">Atualizar PINs</button>
+          <p class="text-xs text-gray-500 mt-2">Dica: use algo simples e compartilhe só com a família.</p>
+        </div>
+        <div class="card">
+          <h3 class="font-semibold mb-2">Presentes sugeridos</h3>
+          <p class="text-sm text-gray-600 mb-2">Adicione novos itens rápidos.</p>
+          <div class="flex gap-2 mb-2">
+            <input id="newGiftTitle" class="input" placeholder="Ex.: Toalha de rosto"/>
+            <input id="newGiftQty" class="input w-24" type="number" min="1" value="1" />
+          </div>
+          <button id="addGiftBtn" class="btn w-full">Adicionar presente</button>
+        </div>
+      </div>
     </div>
   </header>
 
+  <!-- HERO / RESUMO -->
   <section class="max-w-6xl mx-auto px-4 mt-6">
     <div class="grid md:grid-cols-3 gap-4">
       <div class="md:col-span-2 card">
@@ -41,6 +104,7 @@
             <div id="countdown" class="text-2xl font-bold">--d --h --m</div>
           </div>
         </div>
+
         <div class="mt-4">
           <div class="flex items-center justify-between text-sm mb-2">
             <span class="font-medium">Progresso dos presentes confirmados</span>
@@ -51,25 +115,35 @@
           </div>
         </div>
       </div>
+
       <div class="card">
         <h3 class="font-semibold mb-2">Informações rápidas</h3>
         <ul class="text-sm space-y-2">
           <li><span class="tag">Local</span> <span id="eventLocation">Casa da família</span></li>
           <li><span class="tag">Horário</span> <span id="eventTime">18h</span></li>
           <li><span class="tag">Dress code</span> Alegre & confortável 😄</li>
-          <li><span class="tag">Obs.</span> Leve amor, fome e boas histórias!</li>
+          <li><span class="tag">Obs.</span> <span id="eventObs">Leve amor, fome e boas histórias!</span></li>
         </ul>
       </div>
     </div>
   </section>
 
+  <!-- AÇÕES -->
   <section class="max-w-6xl mx-auto px-4 mt-6">
     <div class="grid md:grid-cols-3 gap-4">
+      <!-- Itens (trazer) -->
       <div class="md:col-span-2 card">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-bold">Quem leva o quê<\/h2>
-          <span id="itemsCountTag" class="tag">0 itens combinados<\/span>
-        <\/div>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-bold">Quem leva o quê</h2>
+          <span id="itemsCountTag" class="tag">0 itens combinados</span>
+        </div>
+
+        <!-- aviso quando não logado -->
+        <div id="loginHint" class="mt-3 text-sm text-gray-600 hidden">
+          Entre com seu nome e PIN no topo para adicionar itens do churrasco.
+        </div>
+
+        <!-- form -->
         <div id="addItemCard" class="mt-3 hidden">
           <form id="addItemForm" class="grid sm:grid-cols-5 gap-2">
             <input id="itemName" class="input sm:col-span-2" placeholder="Ex.: Picanha" required />
@@ -79,33 +153,63 @@
             <button class="btn btn-primary sm:col-span-1" type="submit">Adicionar</button>
           </form>
         </div>
+
         <div id="itemsList" class="mt-4 grid md:grid-cols-2 gap-3"></div>
       </div>
 
+      <!-- Presentes -->
       <div class="card">
         <h2 class="text-lg font-bold">Presentes da Tia Amélia</h2>
         <p class="text-sm text-gray-600 mb-3">Clique em “vou levar” para reservar e evitar duplicidade.</p>
-        <div id="giftsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"><\/div>
+        <div id="giftsList"></div>
       </div>
     </div>
   </section>
 
+  <!-- FOOTER -->
   <footer class="max-w-6xl mx-auto px-4 py-10 text-center text-xs text-gray-500">
     Feito com 💙 por Caio — hospedado no GitHub Pages
   </footer>
 
-  <script type="module">
-    // ===== EVENTO =====
-    const EVENT = {
+  <!-- ================== APP ================== -->
+  <!-- Blinda data/contagem mesmo se Firebase falhar -->
+  <script>
+    window.EVENT = {
       id: 'tia-amelia-89',
       dateISO: '2025-08-23T18:00:00-03:00',
       location: 'Casa da família',
       timeText: '18h',
+      obs: 'Leve amor, fome e boas histórias!',
       familyPIN: 'AMELIA89',
-      adminPIN: 'HOST2025'
+      adminPIN:  'HOST2025',
+      giftsCols: 2
     };
+    (function(){
+      const dt = document.getElementById('eventDateText');
+      const tm = document.getElementById('eventTime');
+      const lc = document.getElementById('eventLocation');
+      const ob = document.getElementById('eventObs');
+      if (dt) dt.textContent = new Date(window.EVENT.dateISO)
+        .toLocaleString('pt-BR',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'});
+      if (tm) tm.textContent = window.EVENT.timeText;
+      if (lc) lc.textContent = window.EVENT.location;
+      if (ob) ob.textContent = window.EVENT.obs;
+      const el = document.getElementById('countdown');
+      function tick(){
+        const now = new Date(), target = new Date(window.EVENT.dateISO);
+        const diff = Math.max(0, target - now);
+        const d = Math.floor(diff/86400000);
+        const h = Math.floor((diff/3600000)%24);
+        const m = Math.floor((diff/60000)%60);
+        if (el) el.textContent = `${d}d ${h}h ${m}m`;
+      }
+      tick(); setInterval(tick, 20000);
+    })();
+  </script>
 
-    // ===== FIREBASE CONFIG (já com seu projeto) =====
+  <!-- Firebase SDKs (v10, estável) -->
+  <script type="module">
+    /* ===== CONFIG FIREBASE ===== */
     const firebaseConfig = {
       apiKey: "AIzaSyBduTvLuvV1lrCn7_w12PF0KZ7S6sLMUnQ",
       authDomain: "niver-tia-amelia.firebaseapp.com",
@@ -116,107 +220,115 @@
       measurementId: "G-F0K72Z00XB"
     };
 
-    // ===== IMPORTS (SDK v10 – leve/estável) =====
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, setDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // ===== APP =====
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // ===== DOM =====
+    /* ===== DOM ===== */
     const authArea = document.getElementById('authArea');
+    const hostPanel = document.getElementById('hostPanel');
+    const loginHint = document.getElementById('loginHint');
     const addItemCard = document.getElementById('addItemCard');
     const itemsList = document.getElementById('itemsList');
     const giftsList = document.getElementById('giftsList');
-    const itemsCountTag = document.getElementById('itemsCountTag');
-    const eventDateText = document.getElementById('eventDateText');
     const progressText = document.getElementById('progressText');
     const progressBar = document.getElementById('progressBar');
+    const itemsCountTag = document.getElementById('itemsCountTag');
 
-    // ===== STATE =====
+    // meta form (host)
+    const cfgLocation = document.getElementById('cfgLocation');
+    const cfgObs      = document.getElementById('cfgObs');
+    const cfgCols     = document.getElementById('cfgCols');
+    const cfgFamilyPIN= document.getElementById('cfgFamilyPIN');
+    const cfgAdminPIN = document.getElementById('cfgAdminPIN');
+    const saveMetaBtn = document.getElementById('saveMetaBtn');
+    const savePinsBtn = document.getElementById('savePinsBtn');
+    const addGiftBtn  = document.getElementById('addGiftBtn');
+    const newGiftTitle= document.getElementById('newGiftTitle');
+    const newGiftQty  = document.getElementById('newGiftQty');
+
+    /* ===== STATE ===== */
     let currentUser = null;
     let profileName = localStorage.getItem('profileName') || '';
     let pinOK = localStorage.getItem('pinOK') === 'true';
     let isAdmin = localStorage.getItem('isAdmin') === 'true';
 
-    // ===== INFO DO EVENTO =====
-    eventDateText.textContent = new Date(EVENT.dateISO).toLocaleString('pt-BR', { weekday:'long', day:'2-digit', month:'long', hour:'2-digit', minute:'2-digit' });
-
-    function tickCountdown(){
-      const now = new Date();
-      const target = new Date(EVENT.dateISO);
-      const diff = Math.max(0, target - now);
-      const d = Math.floor(diff / (1000*60*60*24));
-      const h = Math.floor((diff / (1000*60*60)) % 24);
-      const m = Math.floor((diff / (1000*60)) % 60);
-      document.getElementById('countdown').textContent = `${d}d ${h}h ${m}m`;
-    }
-    setInterval(tickCountdown, 20000); tickCountdown();
-
-    // ===== HELPER =====
-    function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
-
-    // ===== AUTH (nome + PIN + anônimo) =====
+    /* ===== RENDER AUTH ===== */
     function renderAuth(){
       authArea.innerHTML = '';
-      if(currentUser && pinOK && profileName){
+      if (currentUser && pinOK && profileName){
         const wrap = document.createElement('div');
         wrap.className = 'flex items-center gap-2';
-        wrap.innerHTML = `<span class="text-sm">Olá, <strong>${escapeHtml(profileName)}</strong>${isAdmin? ' <span class=\"tag bg-green-100 text-green-700\">Anfitrião</span>':''}</span>
-          <button id="adminBtn" class="btn btn-ghost text-xs">${isAdmin? 'Sair do modo anfitrião':'Entrar como anfitrião'}</button>
+        wrap.innerHTML = `
+          <span class="text-sm">Olá, <strong>${escapeHtml(profileName)}</strong></span>
+          <button id="adminBtn" class="btn btn-ghost text-xs">${isAdmin?'Sair do modo anfitrião':'Entrar como anfitrião'}</button>
           <button id="logoutBtn" class="btn btn-ghost text-xs">Sair</button>`;
         authArea.appendChild(wrap);
+
         document.getElementById('adminBtn').onclick = ()=>{
-          if(isAdmin){ isAdmin = false; localStorage.removeItem('isAdmin'); renderAuth(); }
-          else { const pin = prompt('PIN do anfitrião:'); if((pin||'').trim().toUpperCase() === EVENT.adminPIN.toUpperCase()){ isAdmin = true; localStorage.setItem('isAdmin','true'); renderAuth(); } else alert('PIN de anfitrião incorreto'); }
+          if(isAdmin){ isAdmin=false; localStorage.removeItem('isAdmin'); hostPanel.classList.add('hidden'); renderAuth(); }
+          else{
+            const pin = prompt('PIN do anfitrião:');
+            if((pin||'').trim().toUpperCase() === window.EVENT.adminPIN.toUpperCase()){
+              isAdmin=true; localStorage.setItem('isAdmin','true'); hostPanel.classList.remove('hidden'); renderAuth(); loadMeta(); }
+            else alert('PIN de anfitrião incorreto');
+          }
         };
         document.getElementById('logoutBtn').onclick = async ()=>{
-          await signOut(auth); localStorage.clear(); profileName=''; pinOK=false; isAdmin=false;
+          await signOut(auth);
+          localStorage.clear();
+          profileName=''; pinOK=false; isAdmin=false;
+          hostPanel.classList.add('hidden');
         };
+
+        loginHint.classList.add('hidden');
         addItemCard.classList.remove('hidden');
       } else {
         const wrap = document.createElement('div');
         wrap.className = 'flex items-center gap-2';
         wrap.innerHTML = `
           <input id="nameInput" class="input w-40" placeholder="Seu nome" value="${escapeHtml(profileName)}"/>
-          <input id="pinInput" class="input w-32" placeholder="PIN" />
+          <input id="pinInput" class="input w-28" placeholder="PIN" />
           <button id="enterBtn" class="btn btn-primary text-sm">Entrar</button>`;
         authArea.appendChild(wrap);
+
         document.getElementById('enterBtn').onclick = async ()=>{
           const n = document.getElementById('nameInput').value.trim();
           const p = (document.getElementById('pinInput').value||'').trim();
           if(!n){ alert('Digite seu nome'); return; }
-          const enterBtn = document.getElementById('enterBtn');
-          enterBtn.disabled = true; enterBtn.textContent = 'Entrando...';
-          const pinNormalized = p.toUpperCase();
-          if(pinNormalized !== EVENT.familyPIN.toUpperCase()){
-            alert('PIN incorreto'); enterBtn.disabled=false; enterBtn.textContent='Entrar'; return; }
+          const btn = document.getElementById('enterBtn');
+          btn.disabled=true; btn.textContent='Entrando...';
+          if (p.toUpperCase() !== window.EVENT.familyPIN.toUpperCase()){
+            alert('PIN incorreto'); btn.disabled=false; btn.textContent='Entrar'; return;
+          }
           try{
             await signInAnonymously(auth);
-            profileName = n; pinOK = true;
+            profileName=n; pinOK=true;
             localStorage.setItem('profileName', profileName);
             localStorage.setItem('pinOK', 'true');
-            renderAuth(); // atualiza sem recarregar
-          }catch(e){
-            console.error(e); alert('Erro ao entrar');
-          }finally{
-            enterBtn.disabled=false; enterBtn.textContent='Entrar';
-          }
+            renderAuth();
+          }catch(e){ console.error(e); alert('Erro ao entrar'); }
+          finally{ btn.disabled=false; btn.textContent='Entrar'; }
         };
+
+        loginHint.classList.remove('hidden');
         addItemCard.classList.add('hidden');
       }
     }
-    onAuthStateChanged(auth, (u)=>{ currentUser=u; renderAuth(); });
+    onAuthStateChanged(auth,(u)=>{ currentUser=u; renderAuth(); });
 
-    // ===== FIRESTORE REFS =====
-    const itemsCol = collection(db, 'events', EVENT.id, 'bringItems');
-    const giftsCol  = collection(db, 'events', EVENT.id, 'gifts');
+    /* ===== FIRESTORE PATHS ===== */
+    const eventDoc = doc(db,'events', window.EVENT.id);
+    const itemsCol = collection(db,'events', window.EVENT.id, 'bringItems');
+    const giftsCol = collection(db,'events', window.EVENT.id, 'gifts');
 
-    // ===== RENDER =====
-    function itemCard(docId, d){
+    /* ===== HELPERS ===== */
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+    function itemCard(id, d){
       const owner = d.ownerName || 'Família';
       const qty = d.qty ? `${d.qty} ${d.unit||''}`.trim() : '';
       const notes = d.notes ? `<div class='text-xs text-gray-500 mt-1'>${escapeHtml(d.notes)}</div>` : '';
@@ -232,152 +344,193 @@
                   <div class="text-sm text-gray-500">${escapeHtml(owner)}</div>
                   <div class="text-lg font-semibold">${escapeHtml(d.name)}</div>
                 </div>
-                <div class="text-right">${qty ? `<div class=\"tag\">${escapeHtml(qty)}</div>`:''}</div>
+                <div class="text-right">
+                  ${qty ? `<div class="tag">${escapeHtml(qty)}</div>`:''}
+                </div>
               </div>
               ${notes}
-              <div class="flex gap-2 mt-3">${canRemove ? `<button data-del='${docId}' class="btn btn-ghost text-xs">Remover</button>`:''}</div>
+              <div class="flex gap-2 mt-3">
+                ${canRemove ? `<button data-del='${id}' class="btn btn-ghost text-xs">Remover</button>`:''}
+              </div>
             </div>
           </div>
         </div>`;
     }
-
-    function giftRow(docId, g){
+    function giftCard(id, g){
       const reserved = !!g.reservedByName;
       const who = reserved ? `por <strong>${escapeHtml(g.reservedByName)}</strong>` : 'disponível';
-      const btnReserve = reserved ? '' : `<button data-reserve='${docId}' class="btn btn-primary btn-sm text-xs">Vou levar</button>`;
-      const btnFree = (reserved && isAdmin) ? `<button data-free='${docId}' class="btn btn-ghost text-xs">Liberar</button>` : '';
+      const btnReserve = reserved ? '' : `<button data-reserve='${id}' class="btn btn-primary text-xs">Vou levar</button>`;
+      const btnFree = (reserved && isAdmin) ? `<button data-free='${id}' class="btn btn-ghost text-xs">Liberar</button>` : '';
       return `
-        <div class="flex items-center justify-between rounded-xl border p-3 bg-white/80">
-          <div>
-            <div class="font-medium">${escapeHtml(g.title)}</div>
-            <div class="text-xs text-gray-500">${g.qty?`Qtd: ${escapeHtml(String(g.qty))}`:''} <span class="ml-2 ${reserved?'text-green-700':'text-gray-500'}">${who}</span></div>
+        <div class="rounded-xl border p-3 bg-white/80">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="font-medium">${escapeHtml(g.title)}</div>
+              <div class="text-xs text-gray-500">${g.qty?`Qtd: ${escapeHtml(String(g.qty))}`:''} <span class="${reserved?'text-green-700':'text-gray-500'} ml-2">${who}</span></div>
+            </div>
+            <div class="flex items-center gap-2">${btnReserve}${btnFree}</div>
           </div>
-          <div class="flex items-center gap-2">${btnReserve}${btnFree}</div>
         </div>`;
     }
 
-    // ===== PROGRESS =====
-    let totalDoneItems = 0, totalGifts = 0, totalReservedGifts = 0;
-    function recomputeProgress(){
-      // Agora a barra representa só o progresso dos PRESENTES
-      const totalNeeded = totalGifts;
-      const totalDone = totalReservedGifts;
-      if (!totalNeeded) {
-        progressText.textContent = '0 / 0';
-        progressBar.style.width = '0%';
-      } else {
-        const pct = Math.min(100, Math.round((totalDone/totalNeeded)*100));
-        progressText.textContent = `${totalDone} / ${totalNeeded}`;
-        progressBar.style.width = pct + '%';
-      }
+    /* ===== PROGRESS ===== */
+    let totalGifts=0, totalReserved=0;
+    function renderProgress(){
+      if(!totalGifts){ progressText.textContent='0 / 0'; progressBar.style.width='0%'; return; }
+      const pct = Math.min(100, Math.round((totalReserved/totalGifts)*100));
+      progressText.textContent = `${totalReserved} / ${totalGifts}`;
+      progressBar.style.width = pct + '%';
     }
 
-    // ===== LIVE: ITENS =====
-    onSnapshot(query(itemsCol, orderBy('createdAt','desc')), (snap)=>{
-      itemsList.innerHTML = '';
-      let countItems = 0;
+    /* ===== STREAM: ITENS ===== */
+    onSnapshot(query(itemsCol, orderBy('createdAt','desc')),(snap)=>{
+      itemsList.innerHTML=''; let count=0;
       snap.forEach(docSnap=>{
         const d = docSnap.data();
         if(d.deleted) return;
-        countItems++;
-        itemsList.insertAdjacentHTML('beforeend', itemCard(docSnap.id, d));
+        count++;
+        itemsList.insertAdjacentHTML('beforeend', itemCard(docSnap.id,d));
       });
-      totalDoneItems = countItems;
-      if (itemsCountTag) itemsCountTag.textContent = countItems + (countItems === 1 ? ' item combinado' : ' itens combinados');
-      recomputeProgress();
+      itemsCountTag.textContent = count + (count===1?' item combinado':' itens combinados');
+
+      // bind remover
       itemsList.querySelectorAll('[data-del]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          const id = btn.getAttribute('data-del');
+        btn.onclick = async ()=>{
+          const id=btn.getAttribute('data-del');
           if(!confirm('Remover este item?')) return;
-          await setDoc(doc(db,'events',EVENT.id,'bringItems',id), { deleted: true }, { merge: true });
-        });
+          await setDoc(doc(itemsCol,id), { deleted:true }, { merge:true });
+        };
       });
     });
 
-    // ===== LIVE: PRESENTES =====
-    onSnapshot(query(giftsCol, orderBy('title')), (snap)=>{
-      giftsList.innerHTML = '';
-      totalGifts = 0; totalReservedGifts = 0;
+    /* ===== STREAM: PRESENTES ===== */
+    onSnapshot(query(giftsCol, orderBy('title')),(snap)=>{
+      giftsList.innerHTML=''; totalGifts=0; totalReserved=0;
       snap.forEach(docSnap=>{
         const g = docSnap.data();
         if(g.deleted) return;
-        totalGifts++;
-        if(g.reservedByName) totalReservedGifts++;
-        giftsList.insertAdjacentHTML('beforeend', giftRow(docSnap.id, g));
+        totalGifts++; if(g.reservedByName) totalReserved++;
+        giftsList.insertAdjacentHTML('beforeend', giftCard(docSnap.id,g));
       });
-      recomputeProgress();
+      renderProgress();
+
+      // binds
       giftsList.querySelectorAll('[data-reserve]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          if(!(currentUser && pinOK && profileName)) { alert('Entre com seu nome e PIN.'); return; }
-          const id = btn.getAttribute('data-reserve');
-          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{
-            reservedByName: profileName,
-            reservedByUid: currentUser.uid,
-            reservedAt: serverTimestamp()
-          });
-        });
+        btn.onclick = async ()=>{
+          if(!(currentUser && pinOK && profileName)){ alert('Entre com seu nome e PIN.'); return; }
+          const id=btn.getAttribute('data-reserve');
+          await updateDoc(doc(giftsCol,id), { reservedByName:profileName, reservedByUid:currentUser.uid, reservedAt:serverTimestamp() });
+        };
       });
       giftsList.querySelectorAll('[data-free]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
+        btn.onclick = async ()=>{
           if(!isAdmin){ alert('Apenas anfitrião.'); return; }
-          const id = btn.getAttribute('data-free');
-          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{
-            reservedByName: null,
-            reservedByUid: null,
-            reservedAt: null
-          });
-        });
+          const id=btn.getAttribute('data-free');
+          await updateDoc(doc(giftsCol,id), { reservedByName:null, reservedByUid:null, reservedAt:null });
+        };
       });
     });
 
-    // ===== ADD ITEM =====
+    /* ===== FORM ITEM ===== */
     document.getElementById('addItemForm').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      if(!(currentUser && pinOK && profileName)) { alert('Entre com seu nome e PIN.'); return; }
+      if(!(currentUser && pinOK && profileName)){ alert('Entre com seu nome e PIN.'); return; }
       const name = document.getElementById('itemName').value.trim();
       const qty = parseFloat(document.getElementById('itemQty').value || '');
       const unit = document.getElementById('itemUnit').value.trim();
-      const notes = document.getElementById('itemNotes').value.trim();
+      const notes= document.getElementById('itemNotes').value.trim();
       if(!name){ alert('Digite o item'); return; }
-      await addDoc(itemsCol, {
-        name, qty: isNaN(qty)? null: qty, unit, notes,
-        ownerName: profileName, ownerUid: currentUser.uid,
-        createdAt: serverTimestamp(), deleted: false
+      await addDoc(itemsCol,{
+        name, qty:isNaN(qty)?null:qty, unit, notes,
+        ownerName:profileName, ownerUid:currentUser.uid,
+        createdAt:serverTimestamp(), deleted:false
       });
       e.target.reset();
     });
 
-    // ===== SEED INICIAL DE PRESENTES =====
-    async function seedGiftsIfEmpty(){
+    /* ===== META (persistida) ===== */
+    async function loadMeta(){
+      const m = await getDoc(eventDoc);
+      if(m.exists()){
+        const v = m.data();
+        // aplica UI + memória
+        if(v.location){ document.getElementById('eventLocation').textContent = v.location; window.EVENT.location=v.location; }
+        if(v.obs){ document.getElementById('eventObs').textContent = v.obs; window.EVENT.obs=v.obs; }
+        if(v.giftsCols){ giftsList.style.setProperty('--cols', v.giftsCols); window.EVENT.giftsCols=v.giftsCols; }
+        if(v.familyPIN){ window.EVENT.familyPIN=v.familyPIN; }
+        if(v.adminPIN){ window.EVENT.adminPIN=v.adminPIN; }
+      }
+      // preenche form do painel
+      cfgLocation.value = window.EVENT.location;
+      cfgObs.value      = window.EVENT.obs;
+      cfgCols.value     = String(window.EVENT.giftsCols||2);
+      cfgFamilyPIN.value= window.EVENT.familyPIN;
+      cfgAdminPIN.value = window.EVENT.adminPIN;
+    }
+    loadMeta(); // mesmo não admin, pra aplicar colunas/obs/local
+
+    saveMetaBtn.onclick = async ()=>{
+      if(!isAdmin){ alert('Apenas anfitrião.'); return; }
+      const v = {
+        location: cfgLocation.value.trim() || 'Casa da família',
+        obs: cfgObs.value.trim() || 'Leve amor, fome e boas histórias!',
+        giftsCols: parseInt(cfgCols.value||'2')
+      };
+      await setDoc(eventDoc, v, { merge:true });
+      await loadMeta();
+      alert('Configurações salvas!');
+    };
+    savePinsBtn.onclick = async ()=>{
+      if(!isAdmin){ alert('Apenas anfitrião.'); return; }
+      const v = {
+        familyPIN: (cfgFamilyPIN.value||'').trim() || window.EVENT.familyPIN,
+        adminPIN:  (cfgAdminPIN.value||'').trim()  || window.EVENT.adminPIN
+      };
+      await setDoc(eventDoc, v, { merge:true });
+      await loadMeta();
+      alert('PINs atualizados!');
+    };
+    addGiftBtn.onclick = async ()=>{
+      if(!isAdmin){ alert('Apenas anfitrião.'); return; }
+      const title = newGiftTitle.value.trim();
+      const qty = parseInt(newGiftQty.value||'1');
+      if(!title){ alert('Título do presente.'); return; }
+      await addDoc(giftsCol,{ title, qty: isNaN(qty)?1:qty });
+      newGiftTitle.value=''; newGiftQty.value='1';
+    };
+
+    /* ===== SEED GIFTS (1x) ===== */
+    (async function seed(){
       const snap = await getDocs(giftsCol);
       if(snap.empty){
         const gifts = [
-          { title: 'Toalha de mesa pequena (quadrada)', qty: 1 },
-          { title: 'Copos para café', qty: 6 },
-          { title: 'Chaleira', qty: 1 },
-          { title: 'Panela de teflon', qty: 1 },
-          { title: 'Lençol viúvo', qty: 1 },
-          { title: 'Meia dúzia de garfos', qty: 6 },
-          { title: 'Meia dúzia de colheres', qty: 6 },
-          { title: 'Meia dúzia de facas', qty: 6 },
-          { title: 'Panos de prato', qty: 3 },
-          { title: '6 pratos fundos', qty: 6 },
-          { title: '6 pratos rasos', qty: 6 },
+          { title:'Toalha de mesa pequena (quadrada)', qty:1 },
+          { title:'Copos para café', qty:6 },
+          { title:'Chaleira', qty:1 },
+          { title:'Panela de teflon', qty:1 },
+          { title:'Lençol viúvo', qty:1 },
+          { title:'Meia dúzia de garfos', qty:6 },
+          { title:'Meia dúzia de colheres', qty:6 },
+          { title:'Meia dúzia de facas', qty:6 },
+          { title:'Panos de prato', qty:3 },
+          { title:'6 pratos fundos', qty:6 },
+          { title:'6 pratos rasos', qty:6 },
         ];
-        await Promise.all(gifts.map((g,i)=> setDoc(doc(giftsCol, String(i+1)), { ...g })));
+        await Promise.all(gifts.map(g=>addDoc(giftsCol,g)));
       }
-    }
-    seedGiftsIfEmpty();
+    })();
+
   </script>
 
-  <!-- Regras Firestore (cole em Firestore > Regras)
+  <!-- Regras Firestore (lembrete)
   rules_version = '2';
   service cloud.firestore {
     match /databases/{database}/documents {
       function isAuthed(){ return request.auth != null; }
       match /events/{eventId} {
         allow read: if true;
-        match /{col=**}/{docId} {
+        allow update, create: if isAuthed(); // simplificado p/ família
+        match /{col=**}/{doc} {
           allow read: if true;
           allow create, update: if isAuthed();
         }
