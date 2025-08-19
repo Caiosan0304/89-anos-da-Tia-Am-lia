@@ -30,13 +30,9 @@
       <!-- espaçador -->
       <div class="hidden sm:block"></div>
 
-      <!-- Área de auth (desktop) -->
+      <!-- Barras de autenticação -->
       <div id="authBarDesktop" class="hidden sm:flex items-center gap-2"></div>
-
-      <!-- Botão “Entrar” no mobile -->
-      <div class="flex sm:hidden justify-end">
-        <button id="openLogin" class="btn btn-primary text-sm">Entrar</button>
-      </div>
+      <div id="authBarMobile"  class="flex sm:hidden items-center justify-end gap-2"></div>
     </div>
   </header>
 
@@ -213,7 +209,8 @@
 
     // ===== DOM
     const authBarDesktop = document.getElementById('authBarDesktop');
-    const openLoginBtn    = document.getElementById('openLogin');
+    const authBarMobile  = document.getElementById('authBarMobile');
+
     const authModal       = document.getElementById('authModal');
     const closeLoginBtn   = document.getElementById('closeLogin');
     const doLoginBtn      = document.getElementById('doLogin');
@@ -293,73 +290,95 @@
     }
     updateEventHeader();
 
-    // ===== Auth UI
+    // ===== Auth UI (desktop + mobile)
     function renderAuthBars(){
-      // Desktop/topo
-      authBarDesktop.innerHTML = '';
-      if(currentUser && pinOK && profileName){
+      const bars = [authBarDesktop, authBarMobile];
+      bars.forEach(b => b.innerHTML = '');
+
+      const renderLogged = (targetEl) => {
         const wrap = document.createElement('div');
         wrap.className = 'flex items-center gap-2';
         wrap.innerHTML = `
           <span class="text-sm">Olá, <strong>${escapeHtml(profileName)}</strong></span>
-          <button id="adminBtn" class="btn btn-ghost text-xs">${isAdmin?'Sair do modo anfitrião':'Entrar como anfitrião'}</button>
-          <button id="logoutBtn" class="btn btn-ghost text-xs">Sair</button>
+          <button data-admin class="btn btn-ghost text-xs">${isAdmin ? 'Sair do modo anfitrião' : 'Entrar como anfitrião'}</button>
+          <button data-logout class="btn btn-ghost text-xs">Sair</button>
         `;
-        authBarDesktop.appendChild(wrap);
-        document.getElementById('logoutBtn').onclick = async ()=>{
+        targetEl.appendChild(wrap);
+
+        wrap.querySelector('[data-logout]').onclick = async ()=>{
           await signOut(auth);
           localStorage.clear();
           profileName=''; pinOK=false; isAdmin=false;
           renderAuthBars();
           rerenderLists();
+          renderAdminPanel();
         };
-        document.getElementById('adminBtn').onclick = ()=>{
-          if(isAdmin){ isAdmin=false; localStorage.removeItem('isAdmin'); }
-          else{
-            const p = prompt('PIN do anfitrião:')||'';
-            if(norm(p)===norm(EVENT.adminPIN)){ isAdmin=true; localStorage.setItem('isAdmin','true'); }
+
+        wrap.querySelector('[data-admin]').onclick = ()=>{
+          if(isAdmin){
+            isAdmin = false; localStorage.removeItem('isAdmin');
+          }else{
+            const p = prompt('PIN do anfitrião:') || '';
+            if(norm(p) === norm(EVENT.adminPIN)){ isAdmin = true; localStorage.setItem('isAdmin','true'); }
             else { alert('PIN incorreto'); return; }
           }
           renderAdminPanel();
           rerenderLists();
+          renderAuthBars(); // atualiza rótulo nos dois lugares
         };
+      };
+
+      const renderAnon = (targetEl) => {
+        // Desktop: campos + botão; Mobile: botão que abre modal
+        if (targetEl === authBarDesktop){
+          const name = document.createElement('input');
+          name.className = 'input w-40';
+          name.placeholder = 'Seu nome';
+          name.value = profileName;
+
+          const pin = document.createElement('input');
+          pin.className = 'input w-28';
+          pin.placeholder = 'PIN';
+
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-primary text-sm';
+          btn.textContent = 'Entrar';
+          btn.onclick = async ()=>{
+            const n = (name.value||'').trim();
+            const p = norm(pin.value);
+            if(!n){ alert('Digite seu nome'); return; }
+            if(p !== norm(EVENT.familyPIN)){ alert('PIN incorreto'); return; }
+            btn.disabled = true; btn.textContent = 'Entrando...';
+            try{
+              await signInAnonymously(auth);
+              profileName = n; pinOK = true;
+              localStorage.setItem('profileName',profileName);
+              localStorage.setItem('pinOK','true');
+              renderAuthBars(); // atualiza imediatamente
+            }catch(e){ console.error(e); alert('Erro ao entrar'); }
+            btn.disabled = false; btn.textContent = 'Entrar';
+          };
+          targetEl.append(name,pin,btn);
+        } else {
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-primary text-sm';
+          btn.textContent = 'Entrar';
+          btn.onclick = ()=> authModal.classList.remove('hidden');
+          targetEl.appendChild(btn);
+        }
+      };
+
+      if(currentUser && pinOK && profileName){
+        bars.forEach(renderLogged);
         addItemCard.classList.remove('hidden');
       }else{
-        const name = document.createElement('input');
-        name.className = 'input w-40';
-        name.placeholder = 'Seu nome';
-        name.value = profileName;
-
-        const pin = document.createElement('input');
-        pin.className = 'input w-28';
-        pin.placeholder = 'PIN';
-
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-primary text-sm';
-        btn.textContent = 'Entrar';
-
-        btn.onclick = async ()=>{
-          const n = (name.value||'').trim();
-          const p = norm(pin.value);
-          if(!n){ alert('Digite seu nome'); return; }
-          if(p !== norm(EVENT.familyPIN)){ alert('PIN incorreto'); return; }
-          btn.disabled = true; btn.textContent = 'Entrando...';
-          try{
-            await signInAnonymously(auth);
-            profileName = n; pinOK = true;
-            localStorage.setItem('profileName',profileName);
-            localStorage.setItem('pinOK','true');
-          }catch(e){ console.error(e); alert('Erro ao entrar'); }
-          btn.disabled = false; btn.textContent = 'Entrar';
-        };
-
-        authBarDesktop.append(name,pin,btn);
+        renderAnon(authBarDesktop);
+        renderAnon(authBarMobile);
         addItemCard.classList.add('hidden');
       }
     }
 
     // Modal mobile
-    openLoginBtn?.addEventListener('click',()=> authModal.classList.remove('hidden'));
     closeLoginBtn?.addEventListener('click',()=> authModal.classList.add('hidden'));
     doLoginBtn?.addEventListener('click', async ()=>{
       const n = (nameModal.value||'').trim();
@@ -373,6 +392,7 @@
         localStorage.setItem('profileName',profileName);
         localStorage.setItem('pinOK','true');
         authModal.classList.add('hidden');
+        renderAuthBars();            // <- atualiza topo no mobile
       }catch(e){ console.error(e); alert('Erro ao entrar'); }
       doLoginBtn.disabled = false; doLoginBtn.textContent = 'Entrar';
     });
