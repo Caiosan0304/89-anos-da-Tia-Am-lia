@@ -16,10 +16,13 @@
 
     /* --- Rolagem capada do grid de presentes --- */
     #giftsList { scroll-behavior: smooth; }
-    /* Fade suave no rodapé (usado nos presentes; genérico para reuso) */
+    /* --- Rolagem capada da lista "Quem leva o quê" --- */
+    #itemsList { scroll-behavior: smooth; }
+
+    /* Fade suave no rodapé (usado em itens e presentes) */
     .fade-bottom {
       position: absolute;
-      left: 1rem;           /* bate com padding .p-4 */
+      left: 1rem;           /* alinha com o padding .p-4 */
       right: 1rem;
       bottom: 1rem;
       height: 36px;
@@ -29,9 +32,12 @@
       border-bottom-left-radius: 1rem;
       border-bottom-right-radius: 1rem;
     }
+
     /* Scrollbar discreta (Chromium/WebKit) */
-    #giftsList::-webkit-scrollbar { width: 8px; }
-    #giftsList::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:8px; }
+    #giftsList::-webkit-scrollbar,
+    #itemsList::-webkit-scrollbar { width: 8px; }
+    #giftsList::-webkit-scrollbar-thumb,
+    #itemsList::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:8px; }
   </style>
 </head>
 <body class="min-h-screen text-gray-800" style="background:linear-gradient(to bottom,#f0f6ff,#ffffff,#fff5f5)">
@@ -111,8 +117,8 @@
 
   <!-- AÇÕES -->
   <section class="max-w-6xl mx-auto px-4 mt-6 grid md:grid-cols-3 gap-4">
-    <!-- Quem leva o quê -->
-    <div class="md:col-span-2 card p-4">
+    <!-- Quem leva o quê (com rolagem + fade + ver tudo) -->
+    <div id="itemsCard" class="md:col-span-2 card p-4 relative">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-lg font-bold">Quem leva o quê</h2>
         <span id="itemsCountBadge" class="text-xs text-gray-500"></span>
@@ -130,8 +136,18 @@
         <hr class="my-4"/>
       </div>
 
-      <!-- Lista -->
+      <!-- Lista com rolagem -->
       <div id="itemsList" class="grid gap-3"></div>
+
+      <!-- Controles -->
+      <div class="flex justify-center">
+        <button id="toggleItemsHeight" class="mt-2 text-xs text-blue-600 hover:underline hidden">
+          ver tudo
+        </button>
+      </div>
+
+      <!-- Fade -->
+      <div id="itemsFade" class="fade-bottom"></div>
     </div>
 
     <!-- Presentes (com rolagem + fade + ver todos) -->
@@ -256,7 +272,10 @@
 
     const addItemCard = document.getElementById('addItemCard');
     const addItemForm = document.getElementById('addItemForm');
+    const itemsCard   = document.getElementById('itemsCard');
     const itemsList   = document.getElementById('itemsList');
+    const itemsFade   = document.getElementById('itemsFade');
+    const toggleItemsBtn = document.getElementById('toggleItemsHeight');
     const itemsCountBadge = document.getElementById('itemsCountBadge');
 
     const giftsCard        = document.getElementById('giftsCard');
@@ -283,7 +302,8 @@
     let pinOK   = localStorage.getItem('pinOK') === 'true';
     let isAdmin = localStorage.getItem('isAdmin') === 'true';
 
-    // estado do “ver todos” dos presentes
+    // estados de expansão
+    let itemsExpanded = false;
     let giftsExpanded = false;
 
     // Caches para rerender sem precisar refazer snapshot
@@ -520,7 +540,60 @@
       `;
     }
 
-    // ===== Cálculo e comportamento da rolagem capada dos PRESENTES
+    // ===== Cálculo/controle da rolagem capada — ITENS
+    function calcMaxHeightForList(listEl, visibleCards = 4.5) {
+      const first = listEl.children[0];
+      if (!first) return 0;
+      const cardH = first.getBoundingClientRect().height;
+      const styles = getComputedStyle(listEl);
+      const gap = parseFloat(styles.rowGap || styles.gap || 0);
+
+      const full = Math.floor(visibleCards);
+      const frac = visibleCards - full;
+      const rowsGap = Math.max(0, full - 1) * gap;
+
+      return (full * cardH) + (frac * cardH) + rowsGap;
+    }
+
+    function updateItemsFade() {
+      if (!itemsList.classList.contains('overflow-auto')) {
+        itemsFade.style.display = 'none';
+        return;
+      }
+      const atBottom = itemsList.scrollTop + itemsList.clientHeight >= itemsList.scrollHeight - 1;
+      itemsFade.style.display = atBottom ? 'none' : 'block';
+    }
+
+    function applyItemsScrollCap() {
+      const manyItems = itemsList.children.length > 4;
+
+      if (itemsExpanded || !manyItems) {
+        itemsList.style.maxHeight = '';
+        itemsList.classList.remove('overflow-auto','pr-2');
+        itemsFade.style.display = 'none';
+        toggleItemsBtn.classList.add('hidden');
+        return;
+      }
+
+      const maxH = calcMaxHeightForList(itemsList, 4.5); // 4 visíveis + 5º cortado
+      if (maxH > 0) {
+        itemsList.style.maxHeight = Math.round(maxH) + 'px';
+        itemsList.classList.add('overflow-auto','pr-2'); // pr-2: espaço pro scrollbar
+        toggleItemsBtn.classList.remove('hidden');
+        updateItemsFade();
+      }
+    }
+
+    toggleItemsBtn.addEventListener('click', () => {
+      itemsExpanded = !itemsExpanded;
+      toggleItemsBtn.textContent = itemsExpanded ? 'recolher' : 'ver tudo';
+      applyItemsScrollCap();
+    });
+
+    itemsList.addEventListener('scroll', updateItemsFade);
+    window.addEventListener('resize', () => { if (!itemsExpanded) applyItemsScrollCap(); });
+
+    // ===== Cálculo/controle da rolagem capada — PRESENTES
     function calcGridMaxHeight(container, visibleItems = 6.5) {
       const first = container.children[0];
       if (!first) return 0;
@@ -547,7 +620,7 @@
     }
 
     function applyGiftsScrollCap() {
-      const visible = 6.5; // mude aqui se quiser outro “corte”
+      const visible = 6.5; // 6 visíveis + 7º cortado
       const manyItems = giftsList.children.length > Math.floor(visible);
 
       if (giftsExpanded || !manyItems) {
@@ -561,7 +634,7 @@
       const maxH = calcGridMaxHeight(giftsList, visible);
       if (maxH > 0) {
         giftsList.style.maxHeight = Math.round(maxH) + 'px';
-        giftsList.classList.add('overflow-auto','pr-2'); // pr-2: espaço pro scrollbar
+        giftsList.classList.add('overflow-auto','pr-2');
         toggleGiftsBtn.classList.remove('hidden');
         updateGiftsFade();
       }
@@ -643,7 +716,8 @@
       progressText.textContent = `${doneGifts} / ${totalGifts}`;
       progressBar.style.width = pct + '%';
 
-      // aplica/atualiza a rolagem capada do grid de presentes
+      // aplica/atualiza as rolagens capadas
+      applyItemsScrollCap();
       applyGiftsScrollCap();
     }
 
