@@ -8,39 +8,51 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    :root{--fg:#111827;--fg-2:#374151;--muted:#6b7280}
+    body{color:var(--fg)}
     .card{border:1px solid #e5e7eb;border-radius:1rem;background:#fff}
-    .btn{border-radius:.75rem;padding:.5rem .75rem;font-weight:600}
+    .btn{border-radius:.75rem;padding:.625rem .9rem;font-weight:700;min-height:44px}
     .btn-primary{background:#2563eb;color:#fff}
     .btn-ghost{background:#fff;border:1px solid #e5e7eb}
-    .input{width:100%;border:1px solid #e5e7eb;border-radius:.75rem;padding:.5rem .75rem}
+    .btn-pill{border-radius:9999px}
+    .input{width:100%;border:1px solid #e5e7eb;border-radius:.75rem;padding:.6rem .8rem}
+    .chip{border:1px solid #e5e7eb;border-radius:9999px;padding:.35rem .7rem;font-size:.85rem}
+    .chip[aria-pressed="true"]{background:#eff6ff;border-color:#2563eb;color:#2563eb}
+    .tab{padding:.5rem .9rem;border-radius:.75rem;border:1px solid #e5e7eb}
+    .tab[aria-selected="true"]{background:#111827;color:#fff;border-color:#111827}
 
-    /* --- Rolagem capada do grid de presentes --- */
-    #giftsList { scroll-behavior: smooth; }
-    /* --- Rolagem capada da lista "Quem leva o quê" --- */
-    #itemsList { scroll-behavior: smooth; }
+    /* --- Rolagens capadas + iOS smooth --- */
+    #giftsList, #itemsList { scroll-behavior:smooth; -webkit-overflow-scrolling:touch; }
 
     /* Fade suave no rodapé (usado em itens e presentes) */
     .fade-bottom {
-      position: absolute;
-      left: 1rem;           /* alinha com o padding .p-4 */
-      right: 1rem;
-      bottom: 1rem;
-      height: 36px;
-      pointer-events: none;
-      display: none;        /* JS liga/desliga */
+      position: absolute; left: 1rem; right: 1rem; bottom: 1rem;
+      height: 36px; pointer-events: none; display: none;
       background: linear-gradient(to bottom, rgba(255,255,255,0), #ffffff);
-      border-bottom-left-radius: 1rem;
-      border-bottom-right-radius: 1rem;
+      border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;
     }
 
     /* Scrollbar discreta (Chromium/WebKit) */
-    #giftsList::-webkit-scrollbar,
-    #itemsList::-webkit-scrollbar { width: 8px; }
-    #giftsList::-webkit-scrollbar-thumb,
-    #itemsList::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:8px; }
+    #giftsList::-webkit-scrollbar, #itemsList::-webkit-scrollbar { width: 8px; }
+    #giftsList::-webkit-scrollbar-thumb, #itemsList::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:8px; }
+
+    /* Skeletons */
+    .skeleton{position:relative;overflow:hidden;background:#f3f4f6;border-radius:1rem}
+    .skeleton::after{
+      content:"";position:absolute;inset:0;
+      background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.8),rgba(255,255,255,0));
+      transform:translateX(-100%);animation:shimmer 1.2s infinite;
+    }
+    @keyframes shimmer{100%{transform:translateX(100%)}}
+
+    /* CTA flutuante (mobile) */
+    #floatingJoinBtn{ box-shadow:0 10px 20px rgba(37,99,235,.25); }
+
+    /* Área de toast (undo) */
+    #toast{position:fixed;left:0;right:0;bottom:12px;display:none;z-index:60}
   </style>
 </head>
-<body class="min-h-screen text-gray-800" style="background:linear-gradient(to bottom,#f0f6ff,#ffffff,#fff5f5)">
+<body class="min-h-screen" style="background:linear-gradient(to bottom,#f0f6ff,#ffffff,#fff5f5)">
   <!-- HEADER -->
   <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
     <div class="max-w-6xl mx-auto px-4 py-3 grid grid-cols-2 sm:grid-cols-[auto_1fr_auto] items-center gap-3">
@@ -48,11 +60,10 @@
         <div class="text-2xl">🎉</div>
         <div class="leading-tight">
           <div class="text-sm sm:text-base font-bold">89 anos da Tia Amélia</div>
-          <div id="eventDateText" class="text-xs sm:text-sm text-gray-600">–</div>
+          <div id="eventDateText" class="text-xs sm:text-sm text-gray-700">–</div>
         </div>
       </div>
 
-      <!-- espaçador -->
       <div class="hidden sm:block"></div>
 
       <!-- Barras de autenticação -->
@@ -61,11 +72,19 @@
     </div>
   </header>
 
-  <!-- MODAL DE LOGIN (mobile e fallback) -->
+  <!-- CTA flutuante (mobile) -->
+  <button id="floatingJoinBtn" class="sm:hidden fixed top-3 right-3 btn btn-primary btn-pill text-sm">
+    Participar
+  </button>
+
+  <!-- MODAL DE LOGIN -->
   <div id="authModal" class="hidden fixed inset-0 z-40">
     <div class="absolute inset-0 bg-black/40"></div>
-    <div class="relative z-10 max-w-sm mx-auto mt-24 p-4 card">
+    <div class="relative z-10 max-w-sm mx-auto mt-20 p-4 card">
       <h3 class="font-semibold mb-2">Entrar</h3>
+      <p class="text-xs text-gray-700 mb-2">PIN da família (pergunte no grupo 💬).
+        <button id="openPinHelp" class="text-blue-700 underline ml-1">Não sabe o PIN?</button>
+      </p>
       <div class="grid gap-2">
         <input id="nameInputModal" class="input" placeholder="Seu nome" />
         <input id="pinInputModal" class="input" placeholder="PIN" />
@@ -73,7 +92,32 @@
           <button id="closeLogin" class="btn btn-ghost">Cancelar</button>
           <button id="doLogin" class="btn btn-primary">Entrar</button>
         </div>
-        <p class="text-xs text-gray-500">Dica: o PIN não diferencia maiúsculas/minúsculas.</p>
+        <p class="text-xs text-gray-600">Dica: o PIN não diferencia maiúsculas/minúsculas.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL AJUDA PIN -->
+  <div id="pinHelpModal" class="hidden fixed inset-0 z-40">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative z-10 max-w-sm mx-auto mt-24 p-4 card">
+      <h3 class="font-semibold mb-2">Como conseguir o PIN?</h3>
+      <p class="text-sm text-gray-700">O PIN está com a família. Peça no grupo do WhatsApp e volte aqui para entrar. 💙</p>
+      <div class="text-right mt-3">
+        <button id="closePinHelp" class="btn btn-primary">Entendi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST (undo) -->
+  <div id="toast" class="px-4">
+    <div class="max-w-6xl mx-auto">
+      <div class="card px-4 py-3 flex items-center justify-between gap-3">
+        <div id="toastMsg" class="text-sm">Feito.</div>
+        <div class="flex gap-2">
+          <button id="toastUndo" class="btn btn-ghost">Desfazer</button>
+          <button id="toastClose" class="btn btn-primary">Ok</button>
+        </div>
       </div>
     </div>
   </div>
@@ -85,17 +129,17 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-xl font-bold">Churrasco comunitário</h2>
-            <p class="text-sm text-gray-600">Cada um leva um pouquinho e todo mundo curte juntinho 💙</p>
+            <p class="text-sm text-gray-700">Cada um leva um pouquinho e todo mundo curte juntinho 💙</p>
           </div>
           <div class="text-right">
-            <div class="text-xs text-gray-500">Contagem regressiva</div>
+            <div class="text-xs text-gray-600">Contagem regressiva</div>
             <div id="countdown" class="text-xl font-bold">--d --h --m</div>
           </div>
         </div>
         <div class="mt-4">
           <div class="flex items-center justify-between text-sm mb-2">
             <span class="font-medium">Progresso dos presentes confirmados</span>
-            <span id="progressText" class="text-gray-600">0 / 0</span>
+            <span id="progressText" class="text-gray-700">0 / 0</span>
           </div>
           <div class="w-full bg-gray-200 rounded-full h-3">
             <div id="progressBar" class="bg-blue-600 h-3 rounded-full" style="width:0%"></div>
@@ -106,31 +150,80 @@
       <div class="card p-4">
         <h3 class="font-semibold mb-2">Informações rápidas</h3>
         <ul class="text-sm space-y-2">
-          <li><span class="text-xs px-2 py-1 rounded-full bg-gray-100">Local</span> <span id="eventLocation">Casa da família</span></li>
+          <li><span class="text-xs px-2 py-1 rounded-full bg-gray-100">Local</span>
+            <span id="eventLocation">R. Alagoas, 317 - Recanto Silvestre (Fazendinha) Santana de Parnaíba - SP, 06530-245</span>
+          </li>
           <li><span class="text-xs px-2 py-1 rounded-full bg-gray-100">Horário</span> <span id="eventTime">18h</span></li>
           <li><span class="text-xs px-2 py-1 rounded-full bg-gray-100">Dress code</span> Alegre & confortável 😄</li>
           <li><span class="text-xs px-2 py-1 rounded-full bg-gray-100">Obs.</span> <span id="eventNotes">Leve amor, fome e boas histórias!</span></li>
         </ul>
+
+        <!-- Ações rápidas -->
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button id="btnAddGoogle" class="btn btn-ghost text-sm">+ Google Agenda</button>
+          <button id="btnAddICS" class="btn btn-ghost text-sm">+ Apple/ICS</button>
+          <a id="btnMaps" target="_blank" class="btn btn-ghost text-sm text-center" href="#">Abrir no Maps</a>
+          <button id="btnShare" class="btn btn-ghost text-sm">Compartilhar</button>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- AÇÕES -->
   <section class="max-w-6xl mx-auto px-4 mt-6 grid md:grid-cols-3 gap-4">
-    <!-- Quem leva o quê (com rolagem + fade + ver tudo) -->
+    <!-- Quem leva o quê -->
     <div id="itemsCard" class="md:col-span-2 card p-4 relative">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-lg font-bold">Quem leva o quê</h2>
-        <span id="itemsCountBadge" class="text-xs text-gray-500"></span>
+        <span id="itemsCountBadge" class="text-xs text-gray-700"></span>
+      </div>
+
+      <!-- Controles (busca/filtro/ordem + ver tudo top) -->
+      <div class="grid gap-2 mb-3">
+        <input id="searchItems" class="input" placeholder="Buscar item ou nome de quem leva..." />
+        <div class="flex flex-wrap gap-2">
+          <button class="chip" data-filter="Todos" aria-pressed="true">Todos</button>
+          <button class="chip" data-filter="Carnes">Carnes</button>
+          <button class="chip" data-filter="Bebidas">Bebidas</button>
+          <button class="chip" data-filter="Acompanhamentos">Acompanhamentos</button>
+          <button class="chip" data-filter="Utensílios">Utensílios</button>
+          <button class="chip" data-filter="Outros">Outros</button>
+          <div class="ml-auto flex items-center gap-2">
+            <label class="text-xs text-gray-700">Ordenar:</label>
+            <select id="itemsSort" class="input w-40">
+              <option value="recent">Mais recentes</option>
+              <option value="owner">Quem leva</option>
+              <option value="name">Nome do item</option>
+            </select>
+          </div>
+        </div>
+        <div id="itemsCounters" class="text-xs text-gray-700"></div>
+        <div class="flex justify-center">
+          <button id="toggleItemsHeightTop" class="text-xs text-blue-700 hover:underline hidden">ver tudo</button>
+        </div>
       </div>
 
       <!-- Form -->
       <div id="addItemCard" class="hidden">
-        <form id="addItemForm" class="grid sm:grid-cols-5 gap-2">
+        <form id="addItemForm" class="grid sm:grid-cols-6 gap-2">
           <input id="itemName" class="input sm:col-span-2" placeholder="Ex.: Picanha" required />
           <input id="itemQty" class="input" placeholder="Qtd (ex.: 3)" type="number" min="0" step="0.1" />
-          <input id="itemUnit" class="input" placeholder="Unid (kg, un, L)" />
-          <input id="itemNotes" class="input sm:col-span-5" placeholder="Observações (opcional)" />
+          <div class="sm:col-span-1">
+            <input id="itemUnit" class="input" placeholder="Unid" />
+            <div class="mt-1 flex gap-1">
+              <button type="button" class="chip text-xs" data-unit="kg">kg</button>
+              <button type="button" class="chip text-xs" data-unit="un">un</button>
+              <button type="button" class="chip text-xs" data-unit="L">L</button>
+            </div>
+          </div>
+          <select id="itemCategory" class="input">
+            <option value="Carnes">Carnes</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Acompanhamentos">Acompanhamentos</option>
+            <option value="Utensílios">Utensílios</option>
+            <option value="Outros" selected>Outros</option>
+          </select>
+          <input id="itemNotes" class="input sm:col-span-6" placeholder="Observações (opcional) — Ex.: 'trago 1,5 kg • 12 un'" />
           <button class="btn btn-primary sm:col-span-1" type="submit">Adicionar</button>
         </form>
         <hr class="my-4"/>
@@ -139,33 +232,48 @@
       <!-- Lista com rolagem -->
       <div id="itemsList" class="grid gap-3"></div>
 
-      <!-- Controles -->
+      <!-- Controles embaixo -->
       <div class="flex justify-center">
-        <button id="toggleItemsHeight" class="mt-2 text-xs text-blue-600 hover:underline hidden">
-          ver tudo
-        </button>
+        <button id="toggleItemsHeight" class="mt-2 text-xs text-blue-700 hover:underline hidden">ver tudo</button>
       </div>
 
       <!-- Fade -->
       <div id="itemsFade" class="fade-bottom"></div>
+
+      <!-- Export -->
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button id="btnExportItems" class="btn btn-ghost text-sm">Baixar itens (CSV)</button>
+        <button id="btnTVMode" class="btn btn-ghost text-sm">Modo TV</button>
+      </div>
     </div>
 
-    <!-- Presentes (com rolagem + fade + ver todos) -->
+    <!-- Presentes -->
     <div id="giftsCard" class="card p-4 relative">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between mb-2">
         <h2 class="text-lg font-bold">Presentes da Tia Amélia</h2>
-        <span class="text-xs text-gray-500">Clique em “vou levar”</span>
+        <span class="text-xs text-gray-700">Clique em “vou levar”</span>
       </div>
 
-      <div id="giftsList" class="grid gap-2 mt-3" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+      <!-- Abas + ver todos top -->
+      <div class="flex items-center gap-2 mb-2">
+        <button id="tabAvail" class="tab" aria-selected="true">Disponíveis</button>
+        <button id="tabResvd" class="tab" aria-selected="false">Reservados</button>
+        <div class="ml-auto">
+          <button id="toggleGiftsHeightTop" class="text-xs text-blue-700 hover:underline hidden">ver todos</button>
+        </div>
+      </div>
+
+      <div id="giftsList" class="grid gap-2 mt-2" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
 
       <div class="flex justify-center">
-        <button id="toggleGiftsHeight" class="mt-2 text-xs text-blue-600 hover:underline hidden">
-          ver todos
-        </button>
+        <button id="toggleGiftsHeight" class="mt-2 text-xs text-blue-700 hover:underline hidden">ver todos</button>
       </div>
 
       <div id="giftsFade" class="fade-bottom"></div>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button id="btnExportGifts" class="btn btn-ghost text-sm">Baixar presentes (CSV)</button>
+      </div>
     </div>
   </section>
 
@@ -191,14 +299,10 @@
 
       <div class="card p-4">
         <h3 class="font-semibold mb-2">Segurança</h3>
-        <div class="grid gap-2">
-          <label class="text-sm">PIN da família</label>
-          <input id="cfgFamilyPIN" class="input" />
-          <label class="text-sm">PIN do anfitrião</label>
-          <input id="cfgAdminPIN" class="input" />
-          <button id="savePins" class="btn btn-primary mt-2">Atualizar PINs</button>
-          <p class="text-xs text-gray-500">Dica: simples, mas compartilhe só com a família.</p>
-        </div>
+        <p class="text-sm text-gray-700">
+          Esta versão não lê/salva PIN no Firestore (evita exposição pública).
+          Para trocar os PINs, edite o arquivo <code>index.html</code> (constantes <code>EVENT.familyPIN</code> e <code>EVENT.adminPIN</code>).
+        </p>
       </div>
 
       <div class="card p-4">
@@ -214,25 +318,26 @@
     </div>
   </section>
 
-  <footer class="max-w-6xl mx-auto px-4 py-10 text-center text-xs text-gray-500">
+  <footer class="max-w-6xl mx-auto px-4 py-10 text-center text-xs text-gray-600">
+    <p class="mb-2">Aviso: é um site de família; o PIN não é segurança forte. Não compartilhe fora do grupo.</p>
     Feito com 💙 por Caio — hospedado no GitHub Pages
   </footer>
 
   <!-- APP -->
   <script type="module">
-    // ===== Config do Evento (defaults; podem ser sobrescritos pela doc do Firestore)
+    // ===== Config do Evento (LOCAL — não lê/salva PIN no Firestore) =====
     const EVENT = {
       id: 'tia-amelia-89',
       dateISO: '2025-08-23T18:00:00-03:00',
-      location: 'Casa da família',
+      location: 'R. Alagoas, 317 - Recanto Silvestre (Fazendinha) Santana de Parnaíba - SP, 06530-245',
       notes: 'Leve amor, fome e boas histórias!',
       timeText: '18h',
-      familyPIN: 'AMELIA89',
-      adminPIN: 'HOST2025',
+      familyPIN: 'AMELIA89',   // troque aqui se precisar
+      adminPIN: 'HOST2025',    // troque aqui se precisar
       giftsCols: 2
     };
 
-    // ===== Firebase
+    // ===== Firebase (Firestore + Auth anônimo) =====
     const firebaseConfig = {
       apiKey: "AIzaSyBduTvLuvV1lrCn7_w12PF0KZ7S6sLMUnQ",
       authDomain: "niver-tia-amelia.firebaseapp.com",
@@ -251,15 +356,19 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // ===== DOM
+    // ===== DOM =====
     const authBarDesktop = document.getElementById('authBarDesktop');
     const authBarMobile  = document.getElementById('authBarMobile');
+    const floatingJoinBtn= document.getElementById('floatingJoinBtn');
 
     const authModal       = document.getElementById('authModal');
     const closeLoginBtn   = document.getElementById('closeLogin');
     const doLoginBtn      = document.getElementById('doLogin');
     const nameModal       = document.getElementById('nameInputModal');
     const pinModal        = document.getElementById('pinInputModal');
+    const pinHelpModal    = document.getElementById('pinHelpModal');
+    const openPinHelp     = document.getElementById('openPinHelp');
+    const closePinHelp    = document.getElementById('closePinHelp');
 
     const eventDateText = document.getElementById('eventDateText');
     const eventLocation = document.getElementById('eventLocation');
@@ -272,31 +381,51 @@
 
     const addItemCard = document.getElementById('addItemCard');
     const addItemForm = document.getElementById('addItemForm');
+
     const itemsCard   = document.getElementById('itemsCard');
     const itemsList   = document.getElementById('itemsList');
     const itemsFade   = document.getElementById('itemsFade');
     const toggleItemsBtn = document.getElementById('toggleItemsHeight');
+    const toggleItemsBtnTop = document.getElementById('toggleItemsHeightTop');
     const itemsCountBadge = document.getElementById('itemsCountBadge');
+    const itemsCounters = document.getElementById('itemsCounters');
+    const searchItems = document.getElementById('searchItems');
+    const itemsSort = document.getElementById('itemsSort');
 
     const giftsCard        = document.getElementById('giftsCard');
     const giftsList        = document.getElementById('giftsList');
     const toggleGiftsBtn   = document.getElementById('toggleGiftsHeight');
+    const toggleGiftsBtnTop= document.getElementById('toggleGiftsHeightTop');
     const giftsFade        = document.getElementById('giftsFade');
+    const tabAvail         = document.getElementById('tabAvail');
+    const tabResvd         = document.getElementById('tabResvd');
 
     const adminPanel  = document.getElementById('adminPanel');
     const cfgLocation = document.getElementById('cfgLocation');
     const cfgNotes    = document.getElementById('cfgNotes');
     const cfgCols     = document.getElementById('cfgCols');
     const saveCfg     = document.getElementById('saveCfg');
-    const cfgFamilyPIN= document.getElementById('cfgFamilyPIN');
-    const cfgAdminPIN = document.getElementById('cfgAdminPIN');
-    const savePins    = document.getElementById('savePins');
+
     const giftTitle   = document.getElementById('giftTitle');
     const giftQty     = document.getElementById('giftQty');
     const addGift     = document.getElementById('addGift');
     const adminGiftsList = document.getElementById('adminGiftsList');
 
-    // ===== State
+    const btnAddGoogle = document.getElementById('btnAddGoogle');
+    const btnAddICS    = document.getElementById('btnAddICS');
+    const btnMaps      = document.getElementById('btnMaps');
+    const btnShare     = document.getElementById('btnShare');
+
+    const btnExportItems = document.getElementById('btnExportItems');
+    const btnExportGifts = document.getElementById('btnExportGifts');
+    const btnTVMode      = document.getElementById('btnTVMode');
+
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+    const toastUndo = document.getElementById('toastUndo');
+    const toastClose = document.getElementById('toastClose');
+
+    // ===== State =====
     let currentUser = null;
     let profileName = localStorage.getItem('profileName') || '';
     let pinOK   = localStorage.getItem('pinOK') === 'true';
@@ -306,22 +435,34 @@
     let itemsExpanded = false;
     let giftsExpanded = false;
 
-    // Caches para rerender sem precisar refazer snapshot
+    // filtros/abas
+    let filterCategory = 'Todos';
+    let giftsTab = 'available'; // 'available' | 'reserved'
+
+    // loading flags (skeletons)
+    let loadingItems = true;
+    let loadingGifts = true;
+
+    // caches
     let cacheItems = [];
     let cacheGifts = [];
 
+    // undo (gifts)
+    let undoTimer = null;
+    let undoGiftDoc = null;
+
     // Paths
-    const eventDocRef = doc(db,'events',EVENT.id); // doc raiz com settings
+    const eventDocRef = doc(db,'events',EVENT.id);
     const itemsCol = collection(db,'events',EVENT.id,'bringItems');
     const giftsCol = collection(db,'events',EVENT.id,'gifts');
 
-    // ===== Helpers
-    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+    // ===== Helpers =====
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;","<": "&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
     const norm = s => (s||'').trim().toUpperCase();
 
     function setGiftCols(n){
       giftsList.style.gridTemplateColumns = `repeat(${n}, minmax(0,1fr))`;
-      giftsList.dataset.cols = String(n); // guarda colunas para o cálculo do corte
+      giftsList.dataset.cols = String(n);
     }
 
     function tickCountdown(){
@@ -342,10 +483,76 @@
       eventNotes.textContent = EVENT.notes;
       setGiftCols(EVENT.giftsCols || 2);
       tickCountdown();
+
+      // Maps + Calendário + Share
+      const mapsQ = encodeURIComponent(EVENT.location);
+      btnMaps.href = `https://www.google.com/maps?q=${mapsQ}`;
+      btnAddGoogle.onclick = () => {
+        const dates = toGoogleDates(EVENT.dateISO, 3); // 3h de duração padrão
+        const text = encodeURIComponent('89 anos da Tia Amélia 🎉');
+        const details = encodeURIComponent('Churrasco comunitário — leve amor, fome e boas histórias!');
+        const location = encodeURIComponent(EVENT.location);
+        const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
+        window.open(url, '_blank');
+      };
+      btnAddICS.onclick = () => downloadICS();
+
+      btnShare.onclick = async () => {
+        const shareData = {
+          title: '89 anos da Tia Amélia 🎉',
+          text: 'Vem pro churrasco comunitário! Confirma seu presente e o que vai levar 💙',
+          url: window.location.href
+        };
+        if (navigator.share){
+          try{ await navigator.share(shareData); }catch(e){}
+        }else{
+          const wurl = `https://wa.me/?text=${encodeURIComponent(shareData.text + ' ' + shareData.url)}`;
+          window.open(wurl,'_blank');
+        }
+      };
     }
     updateEventHeader();
 
-    // ===== Auth UI (desktop + mobile)
+    // Google Calendar dates (UTC basic)
+    function toGoogleDates(startISO, hours=3){
+      const start = new Date(startISO);
+      const end = new Date(start.getTime() + hours*60*60*1000);
+      const fmt = (d)=> d.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+      return `${fmt(start)}/${fmt(end)}`;
+    }
+
+    function downloadICS(){
+      const start = new Date(EVENT.dateISO);
+      const end = new Date(start.getTime() + 3*60*60*1000);
+      function icsDate(d){
+        const pad = n=>String(n).padStart(2,'0');
+        const yyyy=d.getUTCFullYear(), mm=pad(d.getUTCMonth()+1), dd=pad(d.getUTCDate());
+        const hh=pad(d.getUTCHours()), mi=pad(d.getUTCMinutes()), ss=pad(d.getUTCSeconds());
+        return `${yyyy}${mm}${dd}T${hh}${mi}${ss}Z`;
+      }
+      const ics =
+`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Familia Amelia//Churrasco//PT-BR
+BEGIN:VEVENT
+UID:${Date.now()}@tia-amelia
+DTSTAMP:${icsDate(new Date())}
+DTSTART:${icsDate(start)}
+DTEND:${icsDate(end)}
+SUMMARY:89 anos da Tia Amélia 🎉
+DESCRIPTION:Churrasco comunitário — leve amor, fome e boas histórias!
+LOCATION:${EVENT.location.replace(/\n/g,' ')}
+END:VEVENT
+END:VCALENDAR`;
+      const blob = new Blob([ics],{type:'text/calendar'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'tia-amelia-89.ics';
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+    }
+
+    // ===== Auth UI (desktop + mobile) =====
     function renderAuthBars(){
       const bars = [authBarDesktop, authBarMobile];
       bars.forEach(b => b.innerHTML = '');
@@ -364,40 +571,29 @@
           await signOut(auth);
           localStorage.clear();
           profileName=''; pinOK=false; isAdmin=false;
-          renderAuthBars();
-          rerenderLists();
-          renderAdminPanel();
+          renderAuthBars(); rerenderLists(); renderAdminPanel();
         };
-
         wrap.querySelector('[data-admin]').onclick = ()=>{
-          if(isAdmin){
-            isAdmin = false; localStorage.removeItem('isAdmin');
-          }else{
+          if(isAdmin){ isAdmin=false; localStorage.removeItem('isAdmin'); }
+          else{
             const p = prompt('PIN do anfitrião:') || '';
-            if(norm(p) === norm(EVENT.adminPIN)){ isAdmin = true; localStorage.setItem('isAdmin','true'); }
+            if(norm(p) === norm(EVENT.adminPIN)){ isAdmin=true; localStorage.setItem('isAdmin','true'); }
             else { alert('PIN incorreto'); return; }
           }
-          renderAdminPanel();
-          rerenderLists();
-          renderAuthBars(); // atualiza rótulo nos dois lugares
+          renderAdminPanel(); rerenderLists(); renderAuthBars();
         };
       };
 
       const renderAnon = (targetEl) => {
-        // Desktop: campos + botão; Mobile: botão que abre modal
         if (targetEl === authBarDesktop){
           const name = document.createElement('input');
-          name.className = 'input w-40';
-          name.placeholder = 'Seu nome';
-          name.value = profileName;
+          name.className = 'input w-40'; name.placeholder = 'Seu nome'; name.value = profileName;
 
           const pin = document.createElement('input');
-          pin.className = 'input w-28';
-          pin.placeholder = 'PIN';
+          pin.className = 'input w-28'; pin.placeholder = 'PIN';
 
           const btn = document.createElement('button');
-          btn.className = 'btn btn-primary text-sm';
-          btn.textContent = 'Entrar';
+          btn.className = 'btn btn-primary text-sm'; btn.textContent = 'Entrar';
           btn.onclick = async ()=>{
             const n = (name.value||'').trim();
             const p = norm(pin.value);
@@ -409,15 +605,14 @@
               profileName = n; pinOK = true;
               localStorage.setItem('profileName',profileName);
               localStorage.setItem('pinOK','true');
-              renderAuthBars(); // atualiza imediatamente
+              renderAuthBars();
             }catch(e){ console.error(e); alert('Erro ao entrar'); }
             btn.disabled = false; btn.textContent = 'Entrar';
           };
           targetEl.append(name,pin,btn);
         } else {
           const btn = document.createElement('button');
-          btn.className = 'btn btn-primary text-sm';
-          btn.textContent = 'Entrar';
+          btn.className = 'btn btn-primary text-sm'; btn.textContent = 'Entrar';
           btn.onclick = ()=> authModal.classList.remove('hidden');
           targetEl.appendChild(btn);
         }
@@ -426,14 +621,19 @@
       if(currentUser && pinOK && profileName){
         bars.forEach(renderLogged);
         addItemCard.classList.remove('hidden');
+        floatingJoinBtn.classList.add('hidden');
       }else{
         renderAnon(authBarDesktop);
         renderAnon(authBarMobile);
         addItemCard.classList.add('hidden');
+        floatingJoinBtn.classList.remove('hidden');
       }
     }
 
-    // Modal mobile
+    floatingJoinBtn.onclick = ()=> authModal.classList.remove('hidden');
+    openPinHelp.onclick = ()=> pinHelpModal.classList.remove('hidden');
+    closePinHelp.onclick = ()=> pinHelpModal.classList.add('hidden');
+
     closeLoginBtn?.addEventListener('click',()=> authModal.classList.add('hidden'));
     doLoginBtn?.addEventListener('click', async ()=>{
       const n = (nameModal.value||'').trim();
@@ -447,51 +647,38 @@
         localStorage.setItem('profileName',profileName);
         localStorage.setItem('pinOK','true');
         authModal.classList.add('hidden');
-        renderAuthBars();            // <- atualiza topo no mobile
+        renderAuthBars();
       }catch(e){ console.error(e); alert('Erro ao entrar'); }
       doLoginBtn.disabled = false; doLoginBtn.textContent = 'Entrar';
     });
 
     onAuthStateChanged(auth, (u)=>{ currentUser = u; renderAuthBars(); });
 
-    // ===== Admin Panel
+    // ===== Admin Panel =====
     function renderAdminPanel(){
       adminPanel.classList.toggle('hidden', !isAdmin);
       if(!isAdmin) return;
-      // preencher campos
       cfgLocation.value = EVENT.location||'';
       cfgNotes.value    = EVENT.notes||'';
       cfgCols.value     = String(EVENT.giftsCols||2);
-      cfgFamilyPIN.value= EVENT.familyPIN||'';
-      cfgAdminPIN.value = EVENT.adminPIN||'';
     }
-
     saveCfg.onclick = async ()=>{
+      EVENT.location = cfgLocation.value || EVENT.location;
+      EVENT.notes    = cfgNotes.value || EVENT.notes;
+      EVENT.giftsCols= parseInt(cfgCols.value||'2',10);
       await setDoc(eventDocRef, {
-        location: cfgLocation.value||'',
-        notes: cfgNotes.value||'',
-        giftsCols: parseInt(cfgCols.value||'2',10)
+        location: EVENT.location, notes: EVENT.notes, giftsCols: EVENT.giftsCols
       }, { merge:true });
-    };
-    savePins.onclick = async ()=>{
-      await setDoc(eventDocRef, {
-        familyPIN: cfgFamilyPIN.value||EVENT.familyPIN,
-        adminPIN:  cfgAdminPIN.value||EVENT.adminPIN
-      }, { merge:true });
-    };
-    addGift.onclick = async ()=>{
-      const t = (giftTitle.value||'').trim();
-      const q = parseInt(giftQty.value||'1',10);
-      if(!t) return;
-      await addDoc(giftsCol, { title:t, qty:q, reservedByName:null, deleted:false, createdAt: serverTimestamp() });
-      giftTitle.value=''; giftQty.value='1';
+      updateEventHeader();
+      applyGiftsScrollCap();
+      alert('Configurações salvas!');
     };
 
-    // ===== Render helpers (cards)
+    // ===== Render helpers =====
     function itemCard(docId, d){
       const owner = d.ownerName || 'Família';
       const qty   = d.qty ? `${d.qty} ${d.unit||''}`.trim() : '';
-      const isMine= currentUser && d.ownerUid===currentUser.uid;
+      const isMine= currentUser && d.ownerUid===currentUser?.uid;
       const canRemove = isMine || isAdmin;
       return `
         <div class="card p-4">
@@ -500,12 +687,13 @@
             <div class="flex-1">
               <div class="flex items-center justify-between">
                 <div>
-                  <div class="text-sm text-gray-500">${escapeHtml(owner)}</div>
+                  <div class="text-sm text-gray-700">${escapeHtml(owner)}</div>
                   <div class="text-lg font-semibold">${escapeHtml(d.name)}</div>
+                  ${d.category?`<div class="text-xs text-gray-600 mt-1">Categoria: ${escapeHtml(d.category)}</div>`:''}
                 </div>
                 ${qty?`<div class="text-xs px-2 py-1 rounded-full bg-gray-100">${escapeHtml(qty)}</div>`:''}
               </div>
-              ${d.notes?`<div class="text-xs text-gray-500 mt-1">${escapeHtml(d.notes)}</div>`:''}
+              ${d.notes?`<div class="text-xs text-gray-600 mt-1">${escapeHtml(d.notes)}</div>`:''}
               ${canRemove?`<div class="mt-3"><button data-del="${docId}" class="btn btn-ghost text-xs">Remover</button></div>`:''}
             </div>
           </div>
@@ -522,7 +710,9 @@
         <div class="card p-3 flex items-center justify-between">
           <div>
             <div class="font-medium">${escapeHtml(g.title)}</div>
-            <div class="text-xs text-gray-500">${g.qty?`Qtd: ${escapeHtml(String(g.qty))}`:''} <span class="${reserved?'text-green-700':'text-gray-500'} ml-2">${who}</span></div>
+            <div class="text-xs text-gray-700">${g.qty?`Qtd: ${escapeHtml(String(g.qty))}`:''}
+              <span class="${reserved?'text-green-700':'text-gray-600'} ml-2">${who}</span>
+            </div>
           </div>
           <div class="flex items-center gap-2">${btnReserve}${btnFree}</div>
         </div>
@@ -533,131 +723,189 @@
       return `
         <div class="card p-3 flex items-center justify-between">
           <div class="text-sm">
-            <strong>${escapeHtml(g.title)}</strong> ${g.qty?`<span class="text-gray-500">(Qtd: ${g.qty})</span>`:''}
+            <strong>${escapeHtml(g.title)}</strong> ${g.qty?`<span class="text-gray-600">(Qtd: ${g.qty})</span>`:''}
           </div>
           <button data-delgift="${id}" class="btn btn-ghost text-xs">Remover</button>
         </div>
       `;
     }
 
-    // ===== Cálculo/controle da rolagem capada — ITENS
+    // ===== Rolagem capada — ITENS
     function calcMaxHeightForList(listEl, visibleCards = 4.5) {
       const first = listEl.children[0];
       if (!first) return 0;
       const cardH = first.getBoundingClientRect().height;
       const styles = getComputedStyle(listEl);
       const gap = parseFloat(styles.rowGap || styles.gap || 0);
-
       const full = Math.floor(visibleCards);
       const frac = visibleCards - full;
       const rowsGap = Math.max(0, full - 1) * gap;
-
       return (full * cardH) + (frac * cardH) + rowsGap;
     }
-
     function updateItemsFade() {
-      if (!itemsList.classList.contains('overflow-auto')) {
-        itemsFade.style.display = 'none';
-        return;
-      }
+      if (!itemsList.classList.contains('overflow-auto')) { itemsFade.style.display = 'none'; return; }
       const atBottom = itemsList.scrollTop + itemsList.clientHeight >= itemsList.scrollHeight - 1;
       itemsFade.style.display = atBottom ? 'none' : 'block';
     }
-
     function applyItemsScrollCap() {
       const manyItems = itemsList.children.length > 4;
-
+      const btns = [toggleItemsBtn, toggleItemsBtnTop];
       if (itemsExpanded || !manyItems) {
         itemsList.style.maxHeight = '';
         itemsList.classList.remove('overflow-auto','pr-2');
         itemsFade.style.display = 'none';
-        toggleItemsBtn.classList.add('hidden');
+        btns.forEach(b=>b.classList.add('hidden'));
         return;
       }
-
-      const maxH = calcMaxHeightForList(itemsList, 4.5); // 4 visíveis + 5º cortado
+      const maxH = calcMaxHeightForList(itemsList, 4.5);
       if (maxH > 0) {
         itemsList.style.maxHeight = Math.round(maxH) + 'px';
-        itemsList.classList.add('overflow-auto','pr-2'); // pr-2: espaço pro scrollbar
-        toggleItemsBtn.classList.remove('hidden');
+        itemsList.classList.add('overflow-auto','pr-2');
+        btns.forEach(b=>b.classList.remove('hidden'));
         updateItemsFade();
       }
     }
-
-    toggleItemsBtn.addEventListener('click', () => {
+    function toggleItems(){
       itemsExpanded = !itemsExpanded;
-      toggleItemsBtn.textContent = itemsExpanded ? 'recolher' : 'ver tudo';
+      const label = itemsExpanded ? 'recolher' : 'ver tudo';
+      toggleItemsBtn.textContent = label; toggleItemsBtnTop.textContent = label;
       applyItemsScrollCap();
-    });
-
+    }
+    toggleItemsBtn.addEventListener('click', toggleItems);
+    toggleItemsBtnTop.addEventListener('click', toggleItems);
     itemsList.addEventListener('scroll', updateItemsFade);
     window.addEventListener('resize', () => { if (!itemsExpanded) applyItemsScrollCap(); });
 
-    // ===== Cálculo/controle da rolagem capada — PRESENTES
+    // ===== Rolagem capada — PRESENTES
     function calcGridMaxHeight(container, visibleItems = 6.5) {
       const first = container.children[0];
       if (!first) return 0;
       const cardH = first.getBoundingClientRect().height;
       const styles = getComputedStyle(container);
       const gap = parseFloat(styles.rowGap || styles.gap || 0);
-
       const cols = Math.max(1, parseInt(container.dataset.cols || '2', 10));
       const fullRows = Math.floor(visibleItems / cols);
-      const remainder = Math.max(0, visibleItems - (fullRows * cols)); // itens na última linha parcial
+      const remainder = Math.max(0, visibleItems - (fullRows * cols));
       const fracRow = remainder > 0 ? remainder / cols : 0;
-
       const gaps = Math.max(0, fullRows - 1) + (fracRow > 0 ? 1 : 0);
       return (fullRows * cardH) + (fracRow * cardH) + (gaps * gap);
     }
-
     function updateGiftsFade() {
-      if (!giftsList.classList.contains('overflow-auto')) {
-        giftsFade.style.display = 'none';
-        return;
-      }
+      if (!giftsList.classList.contains('overflow-auto')) { giftsFade.style.display = 'none'; return; }
       const atBottom = giftsList.scrollTop + giftsList.clientHeight >= giftsList.scrollHeight - 1;
       giftsFade.style.display = atBottom ? 'none' : 'block';
     }
-
     function applyGiftsScrollCap() {
-      const visible = 6.5; // 6 visíveis + 7º cortado
+      const visible = 6.5;
       const manyItems = giftsList.children.length > Math.floor(visible);
+      const btns = [toggleGiftsBtn, toggleGiftsBtnTop];
 
       if (giftsExpanded || !manyItems) {
         giftsList.style.maxHeight = '';
         giftsList.classList.remove('overflow-auto','pr-2');
-        toggleGiftsBtn.classList.add('hidden');
+        btns.forEach(b=>b.classList.add('hidden'));
         giftsFade.style.display = 'none';
         return;
       }
-
       const maxH = calcGridMaxHeight(giftsList, visible);
       if (maxH > 0) {
         giftsList.style.maxHeight = Math.round(maxH) + 'px';
         giftsList.classList.add('overflow-auto','pr-2');
-        toggleGiftsBtn.classList.remove('hidden');
+        btns.forEach(b=>b.classList.remove('hidden'));
         updateGiftsFade();
       }
     }
-
-    toggleGiftsBtn.addEventListener('click', () => {
+    function toggleGifts(){
       giftsExpanded = !giftsExpanded;
-      toggleGiftsBtn.textContent = giftsExpanded ? 'recolher' : 'ver todos';
+      const label = giftsExpanded ? 'recolher' : 'ver todos';
+      toggleGiftsBtn.textContent = label; toggleGiftsBtnTop.textContent = label;
       applyGiftsScrollCap();
-    });
-
+    }
+    toggleGiftsBtn.addEventListener('click', toggleGifts);
+    toggleGiftsBtnTop.addEventListener('click', toggleGifts);
     giftsList.addEventListener('scroll', updateGiftsFade);
     window.addEventListener('resize', () => { if (!giftsExpanded) applyGiftsScrollCap(); });
 
-    // ===== Rerender Lists from cache (para quando alterna admin)
-    function rerenderLists(){
-      // items
-      itemsList.innerHTML = '';
-      cacheItems.forEach(({id,data})=>{
-        if(data.deleted) return;
-        itemsList.insertAdjacentHTML('beforeend', itemCard(id,data));
+    // ===== Filtros (itens)
+    document.querySelectorAll('[data-filter]').forEach(ch=>{
+      ch.addEventListener('click', ()=>{
+        document.querySelectorAll('[data-filter]').forEach(x=>x.setAttribute('aria-pressed','false'));
+        ch.setAttribute('aria-pressed','true');
+        filterCategory = ch.dataset.filter;
+        rerenderLists();
       });
-      // bind remove item
+    });
+    searchItems.addEventListener('input', ()=> rerenderLists());
+    itemsSort.addEventListener('change', ()=> rerenderLists());
+
+    // ===== Chips unidade
+    document.querySelectorAll('[data-unit]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.getElementById('itemUnit').value = btn.dataset.unit;
+      });
+    });
+
+    // ===== Toast (undo)
+    function showToast(message, onUndo, autoHideMs=5000){
+      toastMsg.textContent = message;
+      toast.style.display = 'block';
+      const clear = ()=>{
+        toast.style.display = 'none';
+        toastUndo.onclick = null; toastClose.onclick = null;
+        if(undoTimer){ clearTimeout(undoTimer); undoTimer=null; }
+      };
+      toastClose.onclick = clear;
+      toastUndo.onclick = async ()=>{ clear(); if(onUndo) await onUndo(); };
+      if(autoHideMs>0){
+        undoTimer = setTimeout(clear, autoHideMs);
+      }
+    }
+
+    // ===== Rerender Lists from cache
+    function rerenderLists(){
+      // --- Items: filtrar/buscar/ordenar
+      const term = (searchItems.value||'').trim().toLowerCase();
+      let items = cacheItems.filter(x=>!x.data.deleted);
+      if(filterCategory !== 'Todos'){
+        items = items.filter(x=> (x.data.category||'Outros')===filterCategory);
+      }
+      if(term){
+        items = items.filter(x=>{
+          const d=x.data;
+          return (d.name||'').toLowerCase().includes(term)
+             || (d.ownerName||'').toLowerCase().includes(term)
+             || (d.notes||'').toLowerCase().includes(term);
+        });
+      }
+      // ordenar
+      if(itemsSort.value==='owner'){
+        items.sort((a,b)=> (a.data.ownerName||'').localeCompare(b.data.ownerName||''));
+      }else if(itemsSort.value==='name'){
+        items.sort((a,b)=> (a.data.name||'').localeCompare(b.data.name||''));
+      }else{ // recent
+        // já vem por createdAt desc do snapshot; mantém
+      }
+
+      // contadores
+      const totalAll = cacheItems.filter(x=>!x.data.deleted).length;
+      const distinctOwners = new Set(cacheItems.filter(x=>!x.data.deleted).map(x=>x.data.ownerUid||x.data.ownerName||'--')).size;
+      itemsCounters.textContent = `Participantes: ${distinctOwners} • Total de itens: ${totalAll}`;
+
+      // render
+      itemsList.innerHTML = '';
+      if(loadingItems){
+        // skeletons
+        for(let i=0;i<3;i++){
+          itemsList.insertAdjacentHTML('beforeend', `<div class="skeleton h-20"></div>`);
+        }
+      }else if(items.length===0){
+        itemsList.innerHTML = `<div class="text-sm text-gray-700 text-center py-6">Ainda ninguém combinou nada. Que tal ser o primeiro? 🙌</div>`;
+      }else{
+        items.forEach(({id,data})=>{
+          itemsList.insertAdjacentHTML('beforeend', itemCard(id,data));
+        });
+      }
+      // binds remove
       itemsList.querySelectorAll('[data-del]').forEach(btn=>{
         btn.onclick = async ()=>{
           const id = btn.getAttribute('data-del');
@@ -666,24 +914,43 @@
         };
       });
 
-      // gifts
+      // badge
+      itemsCountBadge.textContent = totalAll ? `${totalAll} item(ns) combinados` : '';
+
+      // --- Gifts: filtrar por aba
+      let gifts = cacheGifts.filter(x=>!x.data.deleted);
+      const avail = gifts.filter(x=>!x.data.reservedByName);
+      const resvd = gifts.filter(x=>!!x.data.reservedByName);
+      gifts = (giftsTab==='available') ? avail : resvd;
+
       giftsList.innerHTML = '';
-      adminGiftsList.innerHTML = '';
-      cacheGifts.forEach(({id,data})=>{
-        if(data.deleted) return;
-        giftsList.insertAdjacentHTML('beforeend', giftCard(id,data));
-        if(isAdmin) adminGiftsList.insertAdjacentHTML('beforeend', adminGiftRow(id,data));
-      });
+      if(loadingGifts){
+        for(let i=0;i<6;i++){ giftsList.insertAdjacentHTML('beforeend', `<div class="skeleton h-16"></div>`); }
+      }else if(gifts.length===0){
+        giftsList.innerHTML = `<div class="text-sm text-gray-700 text-center py-6">Nada por aqui ${giftsTab==='available'?'por enquanto.':'— tudo que tinha já foi reservado. 💙'}</div>`;
+      }else{
+        gifts.forEach(({id,data})=>{
+          giftsList.insertAdjacentHTML('beforeend', giftCard(id,data));
+        });
+      }
 
       // binds gifts
       giftsList.querySelectorAll('[data-reserve]').forEach(btn=>{
         btn.onclick = async ()=>{
           if(!(currentUser && pinOK && profileName)){ alert('Entre com seu nome e PIN.'); return; }
           const id = btn.getAttribute('data-reserve');
-          await updateDoc(doc(db,'events',EVENT.id,'gifts',id),{
+          const ref = doc(db,'events',EVENT.id,'gifts',id);
+          await updateDoc(ref,{
             reservedByName: profileName,
             reservedByUid: currentUser.uid,
             reservedAt: serverTimestamp()
+          });
+          undoGiftDoc = ref;
+          showToast('Presente reservado!', async ()=>{
+            if(undoGiftDoc){
+              await updateDoc(undoGiftDoc,{ reservedByName:null,reservedByUid:null,reservedAt:null });
+              undoGiftDoc = null;
+            }
           });
         };
       });
@@ -696,6 +963,11 @@
           });
         };
       });
+      adminGiftsList.innerHTML = '';
+      cacheGifts.forEach(({id,data})=>{
+        if(data.deleted) return;
+        if(isAdmin) adminGiftsList.insertAdjacentHTML('beforeend', adminGiftRow(id,data));
+      });
       adminGiftsList.querySelectorAll('[data-delgift]').forEach(btn=>{
         btn.onclick = async ()=>{
           if(!isAdmin) return;
@@ -705,51 +977,57 @@
         };
       });
 
-      // badges / progress
-      itemsCountBadge.textContent = cacheItems.filter(x=>!x.data.deleted).length
-        ? `${cacheItems.filter(x=>!x.data.deleted).length} item(ns) combinados`
-        : '';
-
+      // progresso
       const totalGifts = cacheGifts.filter(x=>!x.data.deleted).length;
       const doneGifts  = cacheGifts.filter(x=>!x.data.deleted && x.data.reservedByName).length;
       const pct = totalGifts? Math.round((doneGifts/totalGifts)*100) : 0;
       progressText.textContent = `${doneGifts} / ${totalGifts}`;
       progressBar.style.width = pct + '%';
 
-      // aplica/atualiza as rolagens capadas
+      // aplicar cortes
       applyItemsScrollCap();
       applyGiftsScrollCap();
     }
 
-    // ===== Live snapshots
+    // Abas presentes
+    function setGiftsTab(tab){
+      giftsTab = tab;
+      tabAvail.setAttribute('aria-selected', tab==='available'?'true':'false');
+      tabResvd.setAttribute('aria-selected', tab==='reserved'?'true':'false');
+      rerenderLists();
+    }
+    tabAvail.onclick = ()=> setGiftsTab('available');
+    tabResvd.onclick = ()=> setGiftsTab('reserved');
+
+    // ===== Snapshots =====
     onSnapshot(query(itemsCol,orderBy('createdAt','desc')),(snap)=>{
+      loadingItems = false;
       cacheItems = [];
       snap.forEach(ds => cacheItems.push({id: ds.id, data: ds.data()}));
       rerenderLists();
     });
 
     onSnapshot(giftsCol,(snap)=>{
+      loadingGifts = false;
       cacheGifts = [];
       snap.forEach(ds => cacheGifts.push({id: ds.id, data: ds.data()}));
       rerenderLists();
     });
 
-    // Doc de configurações do evento
+    // Config do evento (somente location/notes/giftsCols; NÃO PIN)
     onSnapshot(eventDocRef, (ds)=>{
       if(ds.exists()){
         const cfg = ds.data();
         EVENT.location  = cfg.location ?? EVENT.location;
         EVENT.notes     = cfg.notes ?? EVENT.notes;
         EVENT.giftsCols = cfg.giftsCols ?? EVENT.giftsCols;
-        EVENT.familyPIN = cfg.familyPIN ?? EVENT.familyPIN;
-        EVENT.adminPIN  = cfg.adminPIN ?? EVENT.adminPIN;
         updateEventHeader();
         renderAdminPanel();
-        applyGiftsScrollCap(); // se colunas mudarem, recalcula o corte
+        applyGiftsScrollCap();
       }
     });
 
-    // ===== Adicionar item
+    // ===== Add item =====
     addItemForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       if(!(currentUser && pinOK && profileName)){ alert('Entre com seu nome e PIN.'); return; }
@@ -757,16 +1035,18 @@
       const qty  = parseFloat(document.getElementById('itemQty').value || '');
       const unit = document.getElementById('itemUnit').value.trim();
       const notes= document.getElementById('itemNotes').value.trim();
+      const category = document.getElementById('itemCategory').value || 'Outros';
       if(!name){ alert('Digite o item'); return; }
       await addDoc(itemsCol,{
-        name, qty: isNaN(qty)?null:qty, unit, notes,
+        name, qty: isNaN(qty)?null:qty, unit, notes, category,
         ownerName: profileName, ownerUid: currentUser.uid,
         createdAt: serverTimestamp(), deleted:false
       });
       e.target.reset();
+      showToast('Item adicionado!');
     });
 
-    // ===== Seed inicial de presentes (somente se vazio)
+    // ===== Seed de presentes (uma vez) =====
     async function seedGiftsIfEmpty(){
       const snap = await getDocs(giftsCol);
       if(snap.empty){
@@ -788,26 +1068,120 @@
     }
     seedGiftsIfEmpty();
 
-    // Inicial
+    // ===== Export CSV =====
+    function toCSV(rows){
+      return rows.map(r=> r.map(v=>{
+        const s = (v==null?'':String(v)).replace(/"/g,'""');
+        return `"${s}"`;
+      }).join(',')).join('\n');
+    }
+    btnExportItems.onclick = ()=>{
+      const rows = [['Item','Quantidade','Unid','Categoria','Observações','Quem leva']];
+      cacheItems.filter(x=>!x.data.deleted).forEach(x=>{
+        const d=x.data; rows.push([d.name||'', d.qty||'', d.unit||'', d.category||'', d.notes||'', d.ownerName||'']);
+      });
+      const blob = new Blob([toCSV(rows)],{type:'text/csv'});
+      const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='itens.csv'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+    };
+    btnExportGifts.onclick = ()=>{
+      const rows = [['Presente','Qtd','Status','Por quem']];
+      cacheGifts.filter(x=>!x.data.deleted).forEach(x=>{
+        const d=x.data; rows.push([d.title||'', d.qty||'', d.reservedByName?'Reservado':'Disponível', d.reservedByName||'']);
+      });
+      const blob = new Blob([toCSV(rows)],{type:'text/csv'});
+      const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='presentes.csv'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+    };
+
+    // ===== Modo TV =====
+    btnTVMode.onclick = ()=>{
+      const url = new URL(window.location.href);
+      url.searchParams.set('tv','1');
+      window.location.href = url.toString();
+    };
+    if(new URL(window.location.href).searchParams.get('tv')==='1'){
+      // Oculta tudo e mostra painel simples
+      document.querySelector('header').style.display='none';
+      document.querySelector('footer').style.display='none';
+      document.getElementById('adminPanel').style.display='none';
+      document.getElementById('authModal').style.display='none';
+      floatingJoinBtn.style.display='none';
+
+      const tv = document.createElement('div');
+      tv.className = 'fixed inset-0 flex items-center justify-center';
+      tv.style.background='white';
+      tv.innerHTML = `
+        <div class="max-w-4xl mx-auto p-6 text-center">
+          <div class="text-3xl font-bold mb-4">89 anos da Tia Amélia 🎉</div>
+          <div class="text-lg text-gray-700 mb-4" id="tvCountdown">Carregando...</div>
+          <div class="w-full bg-gray-200 rounded-full h-4 mb-3">
+            <div id="tvProgress" class="bg-blue-600 h-4 rounded-full" style="width:0%"></div>
+          </div>
+          <div id="tvProgressText" class="text-sm text-gray-700 mb-6">0 / 0 confirmados</div>
+          <div id="tvTicker" class="text-xl font-semibold"></div>
+        </div>`;
+      document.body.appendChild(tv);
+
+      function tvTick(){
+        const now = new Date();
+        const target = new Date(EVENT.dateISO);
+        const diff = Math.max(0, target - now);
+        const d = Math.floor(diff / (1000*60*60*24));
+        const h = Math.floor((diff / (1000*60*60)) % 24);
+        const m = Math.floor((diff / (1000*60)) % 60);
+        tv.querySelector('#tvCountdown').textContent = `Faltam ${d}d ${h}h ${m}m`;
+      }
+      setInterval(tvTick, 20000); tvTick();
+
+      setInterval(()=>{
+        const list = cacheItems.filter(x=>!x.data.deleted);
+        if(!list.length){ tv.querySelector('#tvTicker').textContent = 'Sem itens ainda 🙌'; return; }
+        const i = Math.floor(Math.random()*list.length);
+        const d=list[i].data;
+        tv.querySelector('#tvTicker').textContent = `${d.ownerName||'Família'} vai levar ${d.name}${d.qty?` — ${d.qty} ${d.unit||''}`:''}`;
+      }, 4000);
+
+      // Atualiza progresso
+      function updateTVProgress(){
+        const totalGifts = cacheGifts.filter(x=>!x.data.deleted).length;
+        const doneGifts  = cacheGifts.filter(x=>!x.data.deleted && x.data.reservedByName).length;
+        const pct = totalGifts? Math.round((doneGifts/totalGifts)*100) : 0;
+        tv.querySelector('#tvProgress').style.width = pct + '%';
+        tv.querySelector('#tvProgressText').textContent = `${doneGifts} / ${totalGifts} confirmados`;
+      }
+      const _orig = rerenderLists;
+      rerenderLists = function(){ _orig(); updateTVProgress(); };
+    }
+
+    // ===== Inicial =====
     renderAuthBars();
     renderAdminPanel();
-  </script>
 
-  <!-- Regras Firestore (cole em Firestore > Regras, se ainda não colocou)
-  rules_version = '2';
-  service cloud.firestore {
-    match /databases/{database}/documents {
-      function isAuthed(){ return request.auth != null; }
-      match /events/{eventId} {
-        allow read: if true;
-        allow write: if isAuthed(); // simples p/ família
-        match /{col=**}/{docId} {
-          allow read: if true;
-          allow write: if isAuthed();
-        }
+    // Ações extras
+    document.addEventListener('click', (e)=>{
+      // acessibilidade: chips de filtro como toggle (teclado)
+      if(e.target.matches('.chip') && e.target.hasAttribute('data-filter')){
+        document.querySelectorAll('[data-filter]').forEach(x=>x.setAttribute('aria-pressed','false'));
+        e.target.setAttribute('aria-pressed','true');
       }
-    }
-  }
-  -->
+    });
+
+    // Regras Firestore (lembrete)
+    // rules_version = '2';
+    // service cloud.firestore {
+    //   match /databases/{database}/documents {
+    //     function isAuthed(){ return request.auth != null; }
+    //     match /events/{eventId} {
+    //       allow read: if true;
+    //       allow write: if isAuthed();
+    //       match /{col=**}/{docId} {
+    //         allow read: if true;
+    //         allow write: if isAuthed();
+    //       }
+    //     }
+    //   }
+    // }
+  </script>
 </body>
 </html>
