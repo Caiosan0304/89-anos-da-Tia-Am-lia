@@ -13,6 +13,25 @@
     .btn-primary{background:#2563eb;color:#fff}
     .btn-ghost{background:#fff;border:1px solid #e5e7eb}
     .input{width:100%;border:1px solid #e5e7eb;border-radius:.75rem;padding:.5rem .75rem}
+
+    /* --- Rolagem capada do grid de presentes --- */
+    #giftsList { scroll-behavior: smooth; }
+    /* Fade suave no rodapé (usado nos presentes; genérico para reuso) */
+    .fade-bottom {
+      position: absolute;
+      left: 1rem;           /* bate com padding .p-4 */
+      right: 1rem;
+      bottom: 1rem;
+      height: 36px;
+      pointer-events: none;
+      display: none;        /* JS liga/desliga */
+      background: linear-gradient(to bottom, rgba(255,255,255,0), #ffffff);
+      border-bottom-left-radius: 1rem;
+      border-bottom-right-radius: 1rem;
+    }
+    /* Scrollbar discreta (Chromium/WebKit) */
+    #giftsList::-webkit-scrollbar { width: 8px; }
+    #giftsList::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:8px; }
   </style>
 </head>
 <body class="min-h-screen text-gray-800" style="background:linear-gradient(to bottom,#f0f6ff,#ffffff,#fff5f5)">
@@ -115,13 +134,22 @@
       <div id="itemsList" class="grid gap-3"></div>
     </div>
 
-    <!-- Presentes -->
-    <div class="card p-4">
+    <!-- Presentes (com rolagem + fade + ver todos) -->
+    <div id="giftsCard" class="card p-4 relative">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-bold">Presentes da Tia Amélia</h2>
         <span class="text-xs text-gray-500">Clique em “vou levar”</span>
       </div>
+
       <div id="giftsList" class="grid gap-2 mt-3" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+
+      <div class="flex justify-center">
+        <button id="toggleGiftsHeight" class="mt-2 text-xs text-blue-600 hover:underline hidden">
+          ver todos
+        </button>
+      </div>
+
+      <div id="giftsFade" class="fade-bottom"></div>
     </div>
   </section>
 
@@ -231,7 +259,10 @@
     const itemsList   = document.getElementById('itemsList');
     const itemsCountBadge = document.getElementById('itemsCountBadge');
 
-    const giftsList   = document.getElementById('giftsList');
+    const giftsCard        = document.getElementById('giftsCard');
+    const giftsList        = document.getElementById('giftsList');
+    const toggleGiftsBtn   = document.getElementById('toggleGiftsHeight');
+    const giftsFade        = document.getElementById('giftsFade');
 
     const adminPanel  = document.getElementById('adminPanel');
     const cfgLocation = document.getElementById('cfgLocation');
@@ -252,6 +283,9 @@
     let pinOK   = localStorage.getItem('pinOK') === 'true';
     let isAdmin = localStorage.getItem('isAdmin') === 'true';
 
+    // estado do “ver todos” dos presentes
+    let giftsExpanded = false;
+
     // Caches para rerender sem precisar refazer snapshot
     let cacheItems = [];
     let cacheGifts = [];
@@ -267,6 +301,7 @@
 
     function setGiftCols(n){
       giftsList.style.gridTemplateColumns = `repeat(${n}, minmax(0,1fr))`;
+      giftsList.dataset.cols = String(n); // guarda colunas para o cálculo do corte
     }
 
     function tickCountdown(){
@@ -485,6 +520,62 @@
       `;
     }
 
+    // ===== Cálculo e comportamento da rolagem capada dos PRESENTES
+    function calcGridMaxHeight(container, visibleItems = 6.5) {
+      const first = container.children[0];
+      if (!first) return 0;
+      const cardH = first.getBoundingClientRect().height;
+      const styles = getComputedStyle(container);
+      const gap = parseFloat(styles.rowGap || styles.gap || 0);
+
+      const cols = Math.max(1, parseInt(container.dataset.cols || '2', 10));
+      const fullRows = Math.floor(visibleItems / cols);
+      const remainder = Math.max(0, visibleItems - (fullRows * cols)); // itens na última linha parcial
+      const fracRow = remainder > 0 ? remainder / cols : 0;
+
+      const gaps = Math.max(0, fullRows - 1) + (fracRow > 0 ? 1 : 0);
+      return (fullRows * cardH) + (fracRow * cardH) + (gaps * gap);
+    }
+
+    function updateGiftsFade() {
+      if (!giftsList.classList.contains('overflow-auto')) {
+        giftsFade.style.display = 'none';
+        return;
+      }
+      const atBottom = giftsList.scrollTop + giftsList.clientHeight >= giftsList.scrollHeight - 1;
+      giftsFade.style.display = atBottom ? 'none' : 'block';
+    }
+
+    function applyGiftsScrollCap() {
+      const visible = 6.5; // mude aqui se quiser outro “corte”
+      const manyItems = giftsList.children.length > Math.floor(visible);
+
+      if (giftsExpanded || !manyItems) {
+        giftsList.style.maxHeight = '';
+        giftsList.classList.remove('overflow-auto','pr-2');
+        toggleGiftsBtn.classList.add('hidden');
+        giftsFade.style.display = 'none';
+        return;
+      }
+
+      const maxH = calcGridMaxHeight(giftsList, visible);
+      if (maxH > 0) {
+        giftsList.style.maxHeight = Math.round(maxH) + 'px';
+        giftsList.classList.add('overflow-auto','pr-2'); // pr-2: espaço pro scrollbar
+        toggleGiftsBtn.classList.remove('hidden');
+        updateGiftsFade();
+      }
+    }
+
+    toggleGiftsBtn.addEventListener('click', () => {
+      giftsExpanded = !giftsExpanded;
+      toggleGiftsBtn.textContent = giftsExpanded ? 'recolher' : 'ver todos';
+      applyGiftsScrollCap();
+    });
+
+    giftsList.addEventListener('scroll', updateGiftsFade);
+    window.addEventListener('resize', () => { if (!giftsExpanded) applyGiftsScrollCap(); });
+
     // ===== Rerender Lists from cache (para quando alterna admin)
     function rerenderLists(){
       // items
@@ -551,6 +642,9 @@
       const pct = totalGifts? Math.round((doneGifts/totalGifts)*100) : 0;
       progressText.textContent = `${doneGifts} / ${totalGifts}`;
       progressBar.style.width = pct + '%';
+
+      // aplica/atualiza a rolagem capada do grid de presentes
+      applyGiftsScrollCap();
     }
 
     // ===== Live snapshots
@@ -577,6 +671,7 @@
         EVENT.adminPIN  = cfg.adminPIN ?? EVENT.adminPIN;
         updateEventHeader();
         renderAdminPanel();
+        applyGiftsScrollCap(); // se colunas mudarem, recalcula o corte
       }
     });
 
