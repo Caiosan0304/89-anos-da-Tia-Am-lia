@@ -43,7 +43,7 @@
         </div>
         <div class="mt-4">
           <div class="flex items-center justify-between text-sm mb-2">
-            <span class="font-medium">Progresso dos itens confirmados</span>
+            <span class="font-medium">Progresso dos presentes confirmados</span>
             <span id="progressText" class="text-gray-600">0 / 0</span>
           </div>
           <div class="w-full bg-gray-200 rounded-full h-3">
@@ -66,7 +66,10 @@
   <section class="max-w-6xl mx-auto px-4 mt-6">
     <div class="grid md:grid-cols-3 gap-4">
       <div class="md:col-span-2 card">
-        <h2 class="text-lg font-bold">Quem leva o quê</h2>
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold">Quem leva o quê<\/h2>
+          <span id="itemsCountTag" class="tag">0 itens combinados<\/span>
+        <\/div>
         <div id="addItemCard" class="mt-3 hidden">
           <form id="addItemForm" class="grid sm:grid-cols-5 gap-2">
             <input id="itemName" class="input sm:col-span-2" placeholder="Ex.: Picanha" required />
@@ -82,7 +85,7 @@
       <div class="card">
         <h2 class="text-lg font-bold">Presentes da Tia Amélia</h2>
         <p class="text-sm text-gray-600 mb-3">Clique em “vou levar” para reservar e evitar duplicidade.</p>
-        <div id="giftsList" class="space-y-2"></div>
+        <div id="giftsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"><\/div>
       </div>
     </div>
   </section>
@@ -128,6 +131,7 @@
     const addItemCard = document.getElementById('addItemCard');
     const itemsList = document.getElementById('itemsList');
     const giftsList = document.getElementById('giftsList');
+    const itemsCountTag = document.getElementById('itemsCountTag');
     const eventDateText = document.getElementById('eventDateText');
     const progressText = document.getElementById('progressText');
     const progressBar = document.getElementById('progressBar');
@@ -167,7 +171,7 @@
         authArea.appendChild(wrap);
         document.getElementById('adminBtn').onclick = ()=>{
           if(isAdmin){ isAdmin = false; localStorage.removeItem('isAdmin'); renderAuth(); }
-          else { const pin = prompt('PIN do anfitrião:'); if(pin === EVENT.adminPIN){ isAdmin = true; localStorage.setItem('isAdmin','true'); renderAuth(); } else alert('PIN de anfitrião incorreto'); }
+          else { const pin = prompt('PIN do anfitrião:'); if((pin||'').trim().toUpperCase() === EVENT.adminPIN.toUpperCase()){ isAdmin = true; localStorage.setItem('isAdmin','true'); renderAuth(); } else alert('PIN de anfitrião incorreto'); }
         };
         document.getElementById('logoutBtn').onclick = async ()=>{
           await signOut(auth); localStorage.clear(); profileName=''; pinOK=false; isAdmin=false;
@@ -185,11 +189,22 @@
           const n = document.getElementById('nameInput').value.trim();
           const p = (document.getElementById('pinInput').value||'').trim();
           if(!n){ alert('Digite seu nome'); return; }
-          if(p !== EVENT.familyPIN){ alert('PIN incorreto'); return; }
-          await signInAnonymously(auth);
-          profileName = n; pinOK = true;
-          localStorage.setItem('profileName', profileName);
-          localStorage.setItem('pinOK', 'true');
+          const enterBtn = document.getElementById('enterBtn');
+          enterBtn.disabled = true; enterBtn.textContent = 'Entrando...';
+          const pinNormalized = p.toUpperCase();
+          if(pinNormalized !== EVENT.familyPIN.toUpperCase()){
+            alert('PIN incorreto'); enterBtn.disabled=false; enterBtn.textContent='Entrar'; return; }
+          try{
+            await signInAnonymously(auth);
+            profileName = n; pinOK = true;
+            localStorage.setItem('profileName', profileName);
+            localStorage.setItem('pinOK', 'true');
+            renderAuth(); // atualiza sem recarregar
+          }catch(e){
+            console.error(e); alert('Erro ao entrar');
+          }finally{
+            enterBtn.disabled=false; enterBtn.textContent='Entrar';
+          }
         };
         addItemCard.classList.add('hidden');
       }
@@ -244,11 +259,17 @@
     // ===== PROGRESS =====
     let totalDoneItems = 0, totalGifts = 0, totalReservedGifts = 0;
     function recomputeProgress(){
-      const totalNeeded = totalGifts + 10; // meta simbólica
-      const totalDone = totalReservedGifts + totalDoneItems;
-      const pct = totalNeeded ? Math.min(100, Math.round((totalDone/totalNeeded)*100)) : 0;
-      progressText.textContent = `${totalDone} / ${totalNeeded}`;
-      progressBar.style.width = pct + '%';
+      // Agora a barra representa só o progresso dos PRESENTES
+      const totalNeeded = totalGifts;
+      const totalDone = totalReservedGifts;
+      if (!totalNeeded) {
+        progressText.textContent = '0 / 0';
+        progressBar.style.width = '0%';
+      } else {
+        const pct = Math.min(100, Math.round((totalDone/totalNeeded)*100));
+        progressText.textContent = `${totalDone} / ${totalNeeded}`;
+        progressBar.style.width = pct + '%';
+      }
     }
 
     // ===== LIVE: ITENS =====
@@ -262,6 +283,7 @@
         itemsList.insertAdjacentHTML('beforeend', itemCard(docSnap.id, d));
       });
       totalDoneItems = countItems;
+      if (itemsCountTag) itemsCountTag.textContent = countItems + (countItems === 1 ? ' item combinado' : ' itens combinados');
       recomputeProgress();
       itemsList.querySelectorAll('[data-del]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
@@ -273,7 +295,7 @@
     });
 
     // ===== LIVE: PRESENTES =====
-    onSnapshot(giftsCol, (snap)=>{
+    onSnapshot(query(giftsCol, orderBy('title')), (snap)=>{
       giftsList.innerHTML = '';
       totalGifts = 0; totalReservedGifts = 0;
       snap.forEach(docSnap=>{
